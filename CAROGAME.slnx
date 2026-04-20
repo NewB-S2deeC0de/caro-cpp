@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="CaroLogic/CaroLogic.vcxproj" Id="6b1d0464-8ef1-40df-a595-8d7094e0a21b" />
+  <Project Path="CARO_GUI/CARO_GUI.vcxproj" Id="df83ef03-96b3-4cc8-bcf6-252d1d87ad76" />
+</Solution>
