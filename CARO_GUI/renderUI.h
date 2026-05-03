@@ -33,3 +33,4 @@ void DrawLoadScreen(sf::RenderWindow& window, const sf::Font& font);
 void DrawSaveScreen(sf::RenderWindow& window, const sf::Font& font,
     bool isNaming, const std::string& inputName, sf::Clock& clock
 );
+void DrawAbout(sf::RenderWindow& window, const sf::Font& font);

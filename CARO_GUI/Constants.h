@@ -5,7 +5,8 @@
 // ============================================================
 //  Enum trạng thái luồng game
 // ============================================================
-enum class AppState { MENU_SCREEN, IN_GAME_SCREEN, SETTINGS_SCREEN, LOAD_SCREEN, SAVE_SCREEN };
+enum class AppState { MENU_SCREEN, IN_GAME_SCREEN, SETTINGS_SCREEN, LOAD_SCREEN, SAVE_SCREEN, ABOUT_SCREEN
+};
 
 // ============================================================
 //  Enum chế độ chơi

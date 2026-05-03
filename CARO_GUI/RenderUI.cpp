@@ -172,16 +172,17 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font)
         "PVE - Choi voi May",
         "Cai Dat",
         "Tai Game (Load)",
+        "Thong Tin (About)",
         "Thoat"
     };
-    const sf::Color btnBorder[] = { Cyber::Cyan, Cyber::Magenta, Cyber::CyanDim, Cyber::CyanDim, sf::Color(180, 30, 60, 200) };
+    const sf::Color btnBorder[] = { Cyber::Cyan, Cyber::Magenta, Cyber::CyanDim, Cyber::CyanDim, Cyber::Yellow, sf::Color(180, 30, 60, 200) };
 
     const float BTN_W = 350.0f;
     const float BTN_H = 60.0f;
     const float START_Y = 300.0f;
     sf::Vector2i mp = sf::Mouse::getPosition(window);
 
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         float bX = W / 2.0f - BTN_W / 2.0f;
         float bY = START_Y + i * 80.0f;
         bool hov = (mp.x >= bX && mp.x <= bX + BTN_W && mp.y >= bY && mp.y <= bY + BTN_H);
@@ -778,4 +779,74 @@ void DrawSaveScreen(sf::RenderWindow& window, const sf::Font& font, bool isNamin
         DrawNeonRect(window, Config::WIN_WIDTH / 2.f - 100.f, Config::WIN_HEIGHT / 2.f + 35.f, 200.f, 50.f, sf::Color(20, 60, 20), sf::Color(50, 200, 100), 2.f);
         DrawCentredText(window, font, "CHAP NHAN", 20, Cyber::White, Config::WIN_WIDTH / 2.f, Config::WIN_HEIGHT / 2.f + 60.f);
     }
+}
+
+//
+void DrawAbout(sf::RenderWindow& window, const sf::Font& font)
+{
+    float W = static_cast<float>(Config::WIN_WIDTH);
+    float H = static_cast<float>(Config::WIN_HEIGHT);
+
+    DrawScanlines(window, 0, 0, W, H, sf::Color(0, 0, 0, 18));
+
+    // 1. Tiêu đề chính nhích lên cao hơn
+    DrawCentredText(window, font, "ABOUT US", 60, Cyber::Yellow, W / 2.f, 50.f);
+
+    // 2. Khung nội dung chính - Thu gọn lại để thấy nút quay lại
+    float bW = 850.f, bH = 620.f;
+    float bX = (W - bW) / 2.f;
+    float bY = 90.f;
+
+    DrawNeonRect(window, bX, bY, bW, bH, Cyber::BgPanel, Cyber::Cyan, 1.5f);
+    DrawCornerBrackets(window, bX, bY, bW, bH, Cyber::Cyan, 20.f, 2.f);
+
+    // 3. Nội dung căn lề trái chuẩn
+    float startX = bX + 60.f;
+    float currY = bY + 30.f;
+    float lineGap = 28.f; // Thu nhỏ lineGap để nội dung không quá dài
+
+    auto DrawRow = [&](const std::string& text, sf::Color color, bool bold = false) {
+        sf::Text t(text, font, 22);
+        t.setFillColor(color);
+        if (bold) t.setStyle(sf::Text::Bold);
+        t.setPosition(startX, currY);
+        window.draw(t);
+        currY += lineGap;
+        };
+
+    DrawRow("PROJECT: CARO MASTER - VERSION 1.0", Cyber::White, true);
+    DrawRow("Class: 25CTT7 - HCMUS", Cyber::White);
+    DrawRow("Instructor: Mr. Nguyen Thanh Tung", Cyber::White);
+
+    DrawRow("---------------- DEVELOPMENT TEAM ----------------", Cyber::CyanDim);
+    currY += 5.f;
+
+    DrawRow("[ Fullscreen Mode ]", Cyber::Yellow);
+    DrawRow("The Anh", Cyber::White);
+
+    DrawRow("[ AI Algorithm ]", Cyber::Yellow);
+    DrawRow("Tan Phat", Cyber::White);
+
+    DrawRow("[ Undo System ]", Cyber::Yellow);
+    DrawRow("Vu Duc Trung", Cyber::White);
+
+    DrawRow("[ Save & Load System ]", Cyber::Yellow);
+    DrawRow("Tung Hieu", Cyber::White);
+
+    DrawRow("[ UI/UX & Graphics ]", Cyber::Yellow);
+    DrawRow("Dai Hieu", Cyber::White);
+
+    DrawRow("------------------ TECHNOLOGY ------------------", Cyber::CyanDim);
+    DrawRow("C++, SFML Library, WinAPI", Cyber::Gray);
+
+    // 4. Nút QUAY LAI nằm DƯỚI khung - Đảm bảo nằm trong màn hình
+    const float BW = 250.f, BH = 55.f;
+    float BX = W / 2.f - BW / 2.f;
+    float BY = bY + bH + 25.f; // Nút nằm tại y = 90 + 620 + 25 = 735 (vẫn < 850)
+
+    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    bool hov = (mp.x >= BX && mp.x <= BX + BW && mp.y >= BY && mp.y <= BY + BH);
+
+    DrawNeonRect(window, BX, BY, BW, BH, hov ? sf::Color(30, 40, 70) : Cyber::BgBtn, hov ? Cyber::Magenta : Cyber::Grid, 2.f);
+    DrawCentredText(window, font, "QUAY LAI", 22, hov ? Cyber::White : Cyber::Gray, BX + BW / 2.f, BY + BH / 2.f);
 }
