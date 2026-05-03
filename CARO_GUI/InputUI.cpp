@@ -30,16 +30,16 @@ void HandleMenuInput(
     const float BTN_H = 60.f;
     const float BTN_X = Config::WIN_WIDTH / 2.f - BTN_W / 2.f;
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 6; ++i) 
     {
         float bY = 300.f + i * 80.f;
 
         if (mouseX >= BTN_X && mouseX <= BTN_X + BTN_W &&
             mouseY >= bY && mouseY <= bY + BTN_H)
         {
-            if (i == 0 || i == 1) 
+            if (i == 0 || i == 1)
             {
-                gameMode = (i == 0) ? GameMode::PVP : GameMode::PVE; 
+                gameMode = (i == 0) ? GameMode::PVP : GameMode::PVE;
 
                 InitGame(boardSize, ruleBlock2, aiLevel);
                 currentState = AppState::IN_GAME_SCREEN;
@@ -51,20 +51,24 @@ void HandleMenuInput(
                 currentLoadedSlot = -1;
                 currentLoadedName = "";
             }
-            else if (i == 2) 
-            { 
-                currentState = AppState::SETTINGS_SCREEN; 
+            else if (i == 2)
+            {
+                currentState = AppState::SETTINGS_SCREEN;
             }
             else if (i == 3)
             {
-                currentState = AppState::LOAD_SCREEN; 
+                currentState = AppState::LOAD_SCREEN;
             }
-            else if (i == 4) 
-            { 
-                window.close(); 
+            else if (i == 4) // Chuyển sang màn hình About[cite: 2]
+            {
+                currentState = AppState::ABOUT_SCREEN;
+            }
+            else if (i == 5) // Nút thoát được đẩy xuống cuối[cite: 2]
+            {
+                window.close();
+            }
         }
     }
-}
 }
 
 // ============================================================
@@ -90,7 +94,14 @@ void HandleInGameInput(
     int& lastUndoPlayer, float& saveNotifTimer,
     sf::Sound& errSound, int& currentLoadedSlot,
     std::string& currentLoadedName)
+
 {
+    static sf::Clock clickCooldown;
+    if (clickCooldown.getElapsedTime().asMilliseconds() < 150)
+    {
+        return; // Click quá nhanh thì bỏ qua không xử lý buffer này
+    }
+    clickCooldown.restart();
     // --- A. Khu vực bàn cờ ---
     int cellSz = GetDynCellSize(boardSize);
     const int BOARD_LEFT = Config::OFFSET_X;
@@ -124,14 +135,14 @@ void HandleInGameInput(
                 timeRemaining = 60.f;
 
                 // Ng??i v?a ?i n??c th?c ? reset quy?n undo c?a h?
-                // (???c ph�p undo l?i ? l??t sau n?u c�n l??t)
+                // (???c php undo l?i ? l??t sau n?u cn l??t)
                 //
                 // 
                 // old 
                 // int playerIdx = (currentPlayer == 1) ? 0 : 1;
                 lastUndoPlayer = -1; // ai cũng có thể undo, không bị chặn liên tiếp
 
-                if (gameMode == GameMode::PVP) 
+                if (gameMode == GameMode::PVP)
                 {
                     isPlayerTurn = !isPlayerTurn;
                 }
@@ -161,6 +172,12 @@ void HandleInGameInput(
 
         if (i == 0) // UNDO 
         {
+            // Nếu hết giờ hoặc có người thắng (gameStatus != 0) thì ko undo được nữa
+            if (gameStatus != 0)
+            {
+                errSound.play(); // Phát tiếng báo lỗi
+                continue;        // Thoát ra, không làm gì thêm
+            }
             if (gameMode == GameMode::PVP)
             {
                 // playerIdx = người đang đến lượt (người bấm Undo)
@@ -175,13 +192,13 @@ void HandleInGameInput(
                     return;
                 }
 
-                // ?? FIX BUG 1 & 2: d�ng UndoMove() pop C?P 2 n??c ??
-                // L� do:
+                // ?? FIX BUG 1 & 2: dùng UndoMove() pop cặp 2 nước đi
+                // Lí do:
                 //   Khi đến lượt P1, stack top là nước của P2 (vừa đánh).
                 //   UndoOneMove() chỉ xóa nước P2 và P1 không lấy lại được nước của mình, và lượt bị lệch.
                 //   UndoMove() xóa cả 2 (P2 + P1) ? P1 về đúng trạng thái trước khi P1 bấm nước đó, isPlayerTurn không ??i ? P1 được đi lại đúng.
                 int undone = UndoMove();
-                if (undone == 0) 
+                if (undone == 0)
                 {
                     errSound.play(); // stack rỗng
                     return;
@@ -207,19 +224,19 @@ void HandleInGameInput(
             }
             else // PVE
             {
-                if (IsAIThinking()) 
-                { 
-                    StartAIThinking(); 
-                    errSound.play(); 
-                    return; 
+                if (IsAIThinking())
+                {
+                    StartAIThinking();
+                    errSound.play();
+                    return;
                 }
 
                 int undone = UndoMove(); // undo cặp AI + người
-                if (undone == 0) 
-                { 
-                    errSound.play(); 
-                    return; 
-            }
+                if (undone == 0)
+                {
+                    errSound.play();
+                    return;
+                }
 
                 gameStatus = 0;
                 isPlayerTurn = true;
@@ -237,7 +254,7 @@ void HandleInGameInput(
                 if (SaveGameSlot(currentLoadedSlot, timeRemaining, isPlayerTurn ? 1 : 0, currentLoadedName.c_str()))
                 {
                     saveNotifTimer = 2.0f;
-        }
+                }
                 else
                 {
                     errSound.play();
@@ -255,6 +272,26 @@ void HandleInGameInput(
     }
 }
 
+//
+void HandleAboutInput(int mouseX, int mouseY, AppState& currentState, sf::Sound& errSound)
+{
+    float W = static_cast<float>(Config::WIN_WIDTH);
+    float H = static_cast<float>(Config::WIN_HEIGHT);
+
+    // Khớp tọa độ tuyệt đối với RenderUI
+    float bH_frame = 620.f;
+    float bY_frame = 90.f;
+
+    const float BW = 250.f, BH = 55.f;
+    float BX = W / 2.f - BW / 2.f;
+    float BY = bY_frame + bH_frame + 25.f;
+
+    if (mouseX >= BX && mouseX <= BX + BW && mouseY >= BY && mouseY <= BY + BH)
+    {
+        currentState = AppState::MENU_SCREEN;
+    }
+}
+
 // ============================================================
 //  HandleSettingsInput (không ??i)
 // ============================================================
@@ -266,72 +303,72 @@ void HandleSettingsInput(
     sf::Sound& errSound)
 {
     const float SY = 200.f;
-    const float CX = 650.f; 
-    const float PX2 = CX + 200.f; 
-    const float BS = 50.f; 
+    const float CX = 650.f;
+    const float PX2 = CX + 200.f;
+    const float BS = 50.f;
     const float RG = 80.f;
 
-    auto hMinus = [&](float ry) 
-        { 
-            return mouseX >= CX && mouseX <= CX + BS && mouseY >= ry && mouseY <= ry + BS; 
+    auto hMinus = [&](float ry)
+        {
+            return mouseX >= CX && mouseX <= CX + BS && mouseY >= ry && mouseY <= ry + BS;
         };
-    auto hPlus = [&](float ry) 
-        { 
-            return mouseX >= PX2 && mouseX <= PX2 + BS && mouseY >= ry && mouseY <= ry + BS; 
+    auto hPlus = [&](float ry)
+        {
+            return mouseX >= PX2 && mouseX <= PX2 + BS && mouseY >= ry && mouseY <= ry + BS;
         };
-    auto hToggle = [&](float ry) 
-        { 
-            return mouseX >= CX && mouseX <= CX + 250 && mouseY >= ry && mouseY <= ry + BS; 
+    auto hToggle = [&](float ry)
+        {
+            return mouseX >= CX && mouseX <= CX + 250 && mouseY >= ry && mouseY <= ry + BS;
         };
 
     float r0 = SY;
-    if (hMinus(r0)) 
-    { 
-        boardSize = std::max(10, boardSize - 1); 
-        errSound.play(); 
+    if (hMinus(r0))
+    {
+        boardSize = std::max(10, boardSize - 1);
+        errSound.play();
     }
-    else if (hPlus(r0)) 
-    { 
-        boardSize = std::min(30, boardSize + 1); 
-        errSound.play(); 
+    else if (hPlus(r0))
+    {
+        boardSize = std::min(30, boardSize + 1);
+        errSound.play();
     }
 
-    if (hToggle(SY + RG)) 
-    { 
-        ruleBlock2 = !ruleBlock2; 
-        errSound.play(); 
+    if (hToggle(SY + RG))
+    {
+        ruleBlock2 = !ruleBlock2;
+        errSound.play();
     }
 
     float r2 = SY + RG * 2;
-    if (hMinus(r2)) 
-    { 
-        aiLevel = std::max(1, aiLevel - 1); 
-        errSound.play(); 
+    if (hMinus(r2))
+    {
+        aiLevel = std::max(1, aiLevel - 1);
+        errSound.play();
     }
-    else if (hPlus(r2)) 
-    { 
+    else if (hPlus(r2))
+    {
         aiLevel = std::min(3, aiLevel + 1);
-        errSound.play(); 
-}
+        errSound.play();
+    }
 
     float r3 = SY + RG * 3;
-    if (hMinus(r3)) 
+    if (hMinus(r3))
     {
         sfxVolume = std::max(0.f, sfxVolume - 10.f);
-        errSound.setVolume(sfxVolume); 
+        errSound.setVolume(sfxVolume);
         errSound.play();
     }
-    else if (hPlus(r3)) 
+    else if (hPlus(r3))
     {
         sfxVolume = std::min(100.f, sfxVolume + 10.f);
-        errSound.setVolume(sfxVolume); 
+        errSound.setVolume(sfxVolume);
         errSound.play();
     }
 
-    if (hToggle(SY + RG * 4)) 
-    { 
-        bgmEnabled = !bgmEnabled; 
-        errSound.play(); 
+    if (hToggle(SY + RG * 4))
+    {
+        bgmEnabled = !bgmEnabled;
+        errSound.play();
     }
 
     const float BW = 300.f;
