@@ -272,19 +272,18 @@ void HandleInGameInput(
     }
 }
 
-//
 void HandleAboutInput(int mouseX, int mouseY, AppState& currentState, sf::Sound& errSound)
 {
     float W = static_cast<float>(Config::WIN_WIDTH);
     float H = static_cast<float>(Config::WIN_HEIGHT);
 
-    // Khớp tọa độ tuyệt đối với RenderUI
-    float bH_frame = 620.f;
-    float bY_frame = 90.f;
+    // Tọa độ khớp hoàn toàn với RenderUI ở trên
+    float bH_frame = 520.f;
+    float bY_frame = 160.f;
 
     const float BW = 250.f, BH = 55.f;
     float BX = W / 2.f - BW / 2.f;
-    float BY = bY_frame + bH_frame + 25.f;
+    float BY = bY_frame + bH_frame + 30.f;
 
     if (mouseX >= BX && mouseX <= BX + BW && mouseY >= BY && mouseY <= BY + BH)
     {
