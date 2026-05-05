@@ -67,3 +67,4 @@ void HandleSaveInput(
     std::string& inputName, int& currentLoadedSlot, 
     std::string& currentLoadedName
 );
+void HandleAboutInput(int mouseX, int mouseY, AppState& currentState, sf::Sound& errSound);

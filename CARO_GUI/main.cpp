@@ -33,7 +33,7 @@ int main()
     }
 
     sf::Music bgMusic;
-    if (bgMusic.openFromFile("assets/bgm.ogg")) 
+    if (bgMusic.openFromFile("assets/bgm.ogg"))
     {
         bgMusic.setLoop(true);
         bgMusic.setVolume(50.f);
@@ -66,19 +66,14 @@ int main()
     int winY2 = -1;
 
     // ── Trạng thái Undo (PVP) ────────────────────────────────-
-    // undoLeft[0] = lượt undo còn lại của P1 (X)
-    // undoLeft[1] = lượt undo còn lại của P2 (O)
-    // lastUndoPlayer: 0/1 = ai vừa dùng undo, -1 = chưa ai / đã reset
     int undoLeft[2] = { Config::UNDO_MAX, Config::UNDO_MAX };
     int lastUndoPlayer = -1;
     float saveNotifTimer = 0.f;
 
-    // Biến cho tính năng Name / Quick Save
     bool isNaming = false;
     int selectedSlotToSave = -1;
     std::string currentInputName = "";
 
-    // --> Thêm 2 biến này để nhớ Slot Quick Save
     int currentLoadedSlot = -1;
     std::string currentLoadedName = "";
 
@@ -107,8 +102,7 @@ int main()
                 }
             }
 
-            if (event.type == sf::Event::MouseButtonPressed &&
-                event.mouseButton.button == sf::Mouse::Left)
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
             {
                 sf::Vector2i pixelPos(event.mouseButton.x, event.mouseButton.y);
                 sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
@@ -118,48 +112,27 @@ int main()
 
                 if (currentState == AppState::MENU_SCREEN)
                 {
-                    HandleMenuInput(
-                        window, mx, my, currentState,
-                        gameMode,
-                        boardSize, ruleBlock2, aiLevel,
-                        timeRemaining, isPlayerTurn, gameStatus,
-                        errSound, currentLoadedSlot, currentLoadedName
-                    );
-                    // Reset win line và undo state khi bắt đầu game mới
+                    HandleMenuInput(window, mx, my, currentState, gameMode, boardSize, ruleBlock2, aiLevel, timeRemaining, isPlayerTurn, gameStatus, errSound, currentLoadedSlot, currentLoadedName);
+                    // Reset trạng thái ván mới
                     winX1 = winY1 = winX2 = winY2 = -1;
-                    undoLeft[0] = Config::UNDO_MAX;
-                    undoLeft[1] = Config::UNDO_MAX;
+                    undoLeft[0] = undoLeft[1] = Config::UNDO_MAX;
                     lastUndoPlayer = -1;
                     saveNotifTimer = 0.f;
                 }
-                else if (currentState == AppState::LOAD_SCREEN) 
-                {
+                else if (currentState == AppState::LOAD_SCREEN)
                     HandleLoadInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, gameStatus, errSound, currentLoadedSlot, currentLoadedName);
-                }
-                else if (currentState == AppState::SAVE_SCREEN) 
-                {
+                else if (currentState == AppState::SAVE_SCREEN)
                     HandleSaveInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, saveNotifTimer, errSound, isNaming, selectedSlotToSave, currentInputName, currentLoadedSlot, currentLoadedName);
-                }
                 else if (currentState == AppState::IN_GAME_SCREEN)
-                {
-                    HandleInGameInput(
-                        mx, my, currentState,
-                        boardSize, gameMode,
-                        isPlayerTurn, gameStatus, timeRemaining,
-                        undoLeft, lastUndoPlayer, saveNotifTimer,
-                        errSound, currentLoadedSlot, 
-                        currentLoadedName
-                    );
-                }
+                    HandleInGameInput(mx, my, currentState, boardSize, gameMode, isPlayerTurn, gameStatus, timeRemaining, undoLeft, lastUndoPlayer, saveNotifTimer, errSound, currentLoadedSlot, currentLoadedName);
                 else if (currentState == AppState::SETTINGS_SCREEN)
                 {
-                    HandleSettingsInput(
-                        mx, my, currentState,
-                        boardSize, ruleBlock2, aiLevel,
-                        sfxVolume, bgmEnabled, errSound
-                    );
-                    if (bgmEnabled) bgMusic.play();
-                    else            bgMusic.pause();
+                    HandleSettingsInput(mx, my, currentState, boardSize, ruleBlock2, aiLevel, sfxVolume, bgmEnabled, errSound);
+                    if (bgmEnabled) bgMusic.play(); else bgMusic.pause();
+                }
+                else if (currentState == AppState::ABOUT_SCREEN) // Xử lý nhấn chuột màn About
+                {
+                    HandleAboutInput(mx, my, currentState, errSound);
                 }
             }
 
@@ -247,10 +220,8 @@ int main()
             }
         }
 
-        if (saveNotifTimer > 0.f)
-        {
-            saveNotifTimer -= dt;
-        }
+        if (saveNotifTimer > 0.f) saveNotifTimer -= dt;
+
         // ── Cập nhật logic ───────────────────────────────────
         UpdateAI();
         if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0)
@@ -258,64 +229,46 @@ int main()
             timeRemaining -= dt;
             if (timeRemaining <= 0.f)
             {
-                gameStatus = isPlayerTurn ? 2 : 1;
+                gameStatus = isPlayerTurn ? 2 : 1; // Hết giờ thì thua
             }
 
             if (gameMode == GameMode::PVE && !isPlayerTurn && !IsAIThinking())
             {
-                int aiX = -1;
-                int aiY = -1;
+                int aiX = -1, aiY = -1;
                 int result = GetAIResult(&aiX, &aiY);
-
-                if (aiX != -1)        // Co nuoc di 
-            {
+                if (aiX != -1)
+                {
                     gameStatus = result;
-                    if (gameStatus != 0)
-                    {
-                        GetWinLine(&winX1, &winY1, &winX2, &winY2);
-                    }
-                isPlayerTurn = true;
-                timeRemaining = 60.f;
-            }
+                    if (gameStatus != 0) GetWinLine(&winX1, &winY1, &winX2, &winY2);
+                    isPlayerTurn = true;
+                    timeRemaining = 60.f;
+                }
             }
         }
 
-        if (gameStatus != 0 && winX1 == -1)
+        // --- FIX LỖI KHỰNG (CHỈ TÍNH WINLINE 1 LẦN) ---
+        if (gameStatus != 0)
         {
-            GetWinLine(&winX1, &winY1, &winX2, &winY2);
+            if (winX1 == -1) GetWinLine(&winX1, &winY1, &winX2, &winY2);
         }
         else {
-            winX1 = -1; winY1 = -1; winX2 = -1; winY2 = -1;
+            winX1 = winY1 = winX2 = winY2 = -1;
         }
 
         // ── Vẽ ──────────────────────────────────────────────
         window.clear(BG_COLOR);
 
-        if (currentState == AppState::MENU_SCREEN)
-        {
-            DrawMenu(window, font);
-        }
-        else if (currentState == AppState::LOAD_SCREEN)
-        {
-            DrawLoadScreen(window, font);
-        }
-        else if (currentState == AppState::SAVE_SCREEN)
-        {
-            DrawSaveScreen(window, font, isNaming, currentInputName, clock);
-        }
-        else if (currentState == AppState::SETTINGS_SCREEN)
-        {
-            DrawSettings(window, font, boardSize, ruleBlock2,
-                aiLevel, sfxVolume, bgmEnabled);
-        }
+        if (currentState == AppState::MENU_SCREEN) DrawMenu(window, font);
+        else if (currentState == AppState::LOAD_SCREEN) DrawLoadScreen(window, font);
+        else if (currentState == AppState::SAVE_SCREEN) DrawSaveScreen(window, font, isNaming, currentInputName, clock);
+        else if (currentState == AppState::SETTINGS_SCREEN) DrawSettings(window, font, boardSize, ruleBlock2, aiLevel, sfxVolume, bgmEnabled);
+        else if (currentState == AppState::ABOUT_SCREEN) DrawAbout(window, font); // Vẽ màn About
         else if (currentState == AppState::IN_GAME_SCREEN)
         {
             DrawBoard(window, boardSize);
             DrawPieces(window, boardSize);
 
-            bool showHover = (gameStatus == 0) &&
-                (gameMode == GameMode::PVP || isPlayerTurn);
-            if (showHover) 
+            if (gameStatus == 0 && (gameMode == GameMode::PVP || isPlayerTurn))
             {
                 int cellSz = GetDynCellSize(boardSize);
 
@@ -329,14 +282,9 @@ int main()
                 }
             }
 
-            if (gameStatus != 0)
-            {
-                DrawWinLine(window, winX1, winY1, winX2, winY2, boardSize);
-            }
+            if (gameStatus != 0) DrawWinLine(window, winX1, winY1, winX2, winY2, boardSize);
 
-            DrawInGamePanel(window, font, timeRemaining,
-                isPlayerTurn, gameStatus, boardSize,
-                gameMode, undoLeft, saveNotifTimer);  
+            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, saveNotifTimer);
         }
 
         window.display();
