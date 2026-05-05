@@ -54,7 +54,16 @@ int main()
     float sfxVolume = 100.f;
     bool  bgmEnabled = true;
 
-    int winX1 = -1, winY1 = -1, winX2 = -1, winY2 = -1;
+    // Biến cho con trỏ 
+    int p1CursorX = boardSize / 2;
+    int p1CursorY = boardSize / 2;
+    int p2CursorX = boardSize / 2;
+    int p2CursorY = boardSize / 2;
+
+    int winX1 = -1;
+    int winY1 = -1; 
+    int winX2 = -1;
+    int winY2 = -1;
 
     // ── Trạng thái Undo (PVP) ────────────────────────────────-
     int undoLeft[2] = { Config::UNDO_MAX, Config::UNDO_MAX };
@@ -95,8 +104,11 @@ int main()
 
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
             {
-                int mx = event.mouseButton.x;
-                int my = event.mouseButton.y;
+                sf::Vector2i pixelPos(event.mouseButton.x, event.mouseButton.y);
+                sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
+                
+                int mx = static_cast<int>(worldPos.x);
+                int my = static_cast<int>(worldPos.y);
 
                 if (currentState == AppState::MENU_SCREEN)
                 {
@@ -121,6 +133,89 @@ int main()
                 else if (currentState == AppState::ABOUT_SCREEN) // Xử lý nhấn chuột màn About
                 {
                     HandleAboutInput(mx, my, currentState, errSound);
+                }
+            }
+
+            if (event.type == sf::Event::KeyPressed && currentState == AppState::IN_GAME_SCREEN)
+            {
+                if (isPlayerTurn)
+                {
+                    if (event.key.code == sf::Keyboard::W)
+                    {
+                        p1CursorY = std::max(0, p1CursorY - 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::S)
+                    {
+                        p1CursorY = std::min(boardSize - 1, p1CursorY + 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::A)
+                    {
+                        p1CursorX = std::max(0, p1CursorX - 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::D)
+                    {
+                        p1CursorX = std::min(boardSize - 1, p1CursorX + 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::Space)
+                    {
+                        if (gameStatus == 0 && !IsAIThinking())
+                        {
+                            int res = ProcessMove(p1CursorX, p1CursorY, 1);
+                            if (res == -1)
+                            {
+                                errSound.play();
+                            }
+                            else
+                            {
+                                gameStatus = res;
+                                timeRemaining = 60.f; 
+                                lastUndoPlayer = -1; 
+                                isPlayerTurn = false; 
+                                if (gameMode == GameMode::PVE && gameStatus == 0) 
+                                {
+                                    StartAIThinking();
+                                }
+                            }
+                        }
+
+                    }
+
+                }
+
+                else if (gameMode == GameMode::PVP && !isPlayerTurn)
+                {
+                    if (event.key.code == sf::Keyboard::Up)
+                    {
+                        p2CursorY = std::max(0, p2CursorY - 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::Down)
+                    {
+                        p2CursorY = std::min(boardSize - 1, p2CursorY + 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::Left)
+                    {
+                        p2CursorX = std::max(0, p2CursorX - 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::Right)
+                    {
+                        p2CursorX = std::min(boardSize - 1, p2CursorX + 1);
+                    }
+                    else if (event.key.code == sf::Keyboard::Enter)
+                    {
+                        if (gameStatus == 0)
+                        {
+                            int res = ProcessMove(p2CursorX, p2CursorY, 2);
+                            if (res == -1) {
+                                errSound.play();
+                            }
+                            else {
+                                gameStatus = res;
+                                timeRemaining = 60.f;
+                                lastUndoPlayer = -1;
+                                isPlayerTurn = true; // Trả lại lượt cho Player 1
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -175,8 +270,16 @@ int main()
 
             if (gameStatus == 0 && (gameMode == GameMode::PVP || isPlayerTurn))
             {
-                sf::Vector2i mp = sf::Mouse::getPosition(window);
-                DrawHoverEffect(window, mp.x, mp.y, boardSize);
+                int cellSz = GetDynCellSize(boardSize);
+
+                if (isPlayerTurn)
+                {
+                    DrawHoverEffect(window, p1CursorX, p1CursorY, boardSize);
+                }
+                else if (gameMode == GameMode::PVP && !isPlayerTurn)
+                {
+                    DrawHoverEffect(window, p2CursorX, p2CursorY, boardSize);
+                }
             }
 
             if (gameStatus != 0) DrawWinLine(window, winX1, winY1, winX2, winY2, boardSize);

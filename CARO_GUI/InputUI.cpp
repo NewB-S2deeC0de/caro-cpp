@@ -112,46 +112,6 @@ void HandleInGameInput(
     if (mouseX >= BOARD_LEFT && mouseX <= BOARD_RIGHT &&
         mouseY >= BOARD_TOP && mouseY <= BOARD_BOTTOM)
     {
-        if (gameMode == GameMode::PVE && !isPlayerTurn)
-        {
-            return;
-        }
-
-        if (gameStatus == 0 && !IsAIThinking())
-        {
-            int gX = (mouseX - Config::OFFSET_X) / cellSz;
-            int gY = (mouseY - Config::OFFSET_Y) / cellSz;
-
-            int currentPlayer = (gameMode == GameMode::PVP && !isPlayerTurn) ? 2 : 1;
-            int res = ProcessMove(gX, gY, currentPlayer);
-
-            if (res == -1)
-            {
-                errSound.play();
-            }
-            else
-            {
-                gameStatus = res;
-                timeRemaining = 60.f;
-
-                // Ng??i v?a ?i n??c th?c ? reset quy?n undo c?a h?
-                // (???c php undo l?i ? l??t sau n?u cn l??t)
-                //
-                // 
-                // old 
-                // int playerIdx = (currentPlayer == 1) ? 0 : 1;
-                lastUndoPlayer = -1; // ai cũng có thể undo, không bị chặn liên tiếp
-
-                if (gameMode == GameMode::PVP)
-                {
-                    isPlayerTurn = !isPlayerTurn;
-                }
-                else {
-                    isPlayerTurn = false;
-                    if (gameStatus == 0) StartAIThinking();
-                }
-            }
-        }
         return;
     }
 
