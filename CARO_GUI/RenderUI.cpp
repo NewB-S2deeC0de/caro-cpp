@@ -457,22 +457,30 @@ void DrawPieces(sf::RenderWindow& window, int boardSize)
 // ============================================================
 //  DrawHoverEffect
 // ============================================================
-void DrawHoverEffect(sf::RenderWindow& window, int mouseX, int mouseY, int boardSize)
+void DrawHoverEffect(sf::RenderWindow& window, int gX, int gY, int boardSize)
 {
     int cellSz = GetDynCellSize(boardSize);
-    int gX = (mouseX - Config::OFFSET_X) / cellSz;
-    int gY = (mouseY - Config::OFFSET_Y) / cellSz;
 
-    if (gX >= 0 && gX < boardSize && gY >= 0 && gY < boardSize && GetCell(gX, gY) == 0) {
+    if (gX >= 0 && gX < boardSize && gY >= 0 && gY < boardSize) {
         float rx = static_cast<float>(Config::OFFSET_X + gX * cellSz);
         float ry = static_cast<float>(Config::OFFSET_Y + gY * cellSz);
 
+        int cellState = GetCell(gX, gY);
+
+        sf::Color fillCol = sf::Color(0, 200, 255, 22);
+        sf::Color borderCol = sf::Color(0, 255, 255, 180);
+
+        if (cellState != 0) {
+            fillCol = sf::Color(255, 220, 0, 25);   // Vàng nền mờ
+            borderCol = sf::Color(255, 220, 0, 200); // Vàng viền rõ
+        }
+
         sf::RectangleShape hr({ static_cast<float>(cellSz), static_cast<float>(cellSz) });
         hr.setPosition(rx, ry);
-        hr.setFillColor(sf::Color(0, 200, 255, 22));
+        hr.setFillColor(fillCol);
         window.draw(hr);
-
-        DrawCornerBrackets(window, rx + 2.f, ry + 2.f, static_cast<float>(cellSz) - 4.f, static_cast<float>(cellSz) - 4.f, sf::Color(0, 255, 255, 180), 6.f, 1.5f);
+        
+        DrawCornerBrackets(window, rx + 2.f, ry + 2.f, static_cast<float>(cellSz) - 4.f, static_cast<float>(cellSz) - 4.f, borderCol, 6.f, 1.5f);
     }
 }
 
