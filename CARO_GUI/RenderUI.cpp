@@ -179,7 +179,9 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font)
     const float BTN_W = 350.0f;
     const float BTN_H = 60.0f;
     const float START_Y = 300.0f;
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
     for (int i = 0; i < 5; ++i) {
         float bX = W / 2.0f - BTN_W / 2.0f;
@@ -329,7 +331,9 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
     const float BTN_START_Y = (gameMode == GameMode::PVP) ? 395.f : 420.f;
     const char* gameBtns[] = { "Undo", "Save Game", "Main Menu" };
     const sf::Color btnAccent[] = { Cyber::Cyan, Cyber::CyanDim, Cyber::MagDim };
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
     for (int i = 0; i < 3; ++i) {
         float bX = pX;
@@ -538,7 +542,9 @@ void DrawSettings(sf::RenderWindow& window, const sf::Font& font, int boardSize,
     std::string values[] = { std::to_string(boardSize), ruleBlock2 ? "BAT (ON)" : "TAT (OFF)", std::to_string(aiLevel), std::to_string((int)sfxVolume), bgmEnabled ? "BAT (ON)" : "TAT (OFF)" };
 
     const float SY = 200.f, LX = 250.f, CX = 650.f, RG = 80.f;
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
     for (int i = 0; i < 5; ++i) {
         float cy = SY + i * RG;
@@ -582,7 +588,9 @@ void DrawLoadScreen(sf::RenderWindow& window, const sf::Font& font)
     sf::Text title("DANH SACH DIEM LUU", font, 45);
     title.setFillColor(Cyber::Yellow); title.setStyle(sf::Text::Bold); title.setPosition(80.f, 50.f); window.draw(title);
 
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
+
     int hoveredSlot = -1;
     const float BTN_W = 400.f, BTN_H = 75.f, START_X = 80.f, START_Y = 150.f, DEL_W = 70.f;
 
@@ -674,7 +682,9 @@ void DrawSaveScreen(sf::RenderWindow& window, const sf::Font& font, bool isNamin
     sf::Text title("CHON O DE LUU VAN GAME", font, 45);
     title.setFillColor(Cyber::Yellow); title.setStyle(sf::Text::Bold); title.setPosition(80.f, 50.f); window.draw(title);
 
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
+
     int hoveredSlot = -1;
     const float BTN_W = 480.f, BTN_H = 75.f, START_X = 80.f, START_Y = 150.f;
 

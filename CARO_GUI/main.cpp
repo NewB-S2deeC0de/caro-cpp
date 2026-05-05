@@ -110,8 +110,11 @@ int main()
             if (event.type == sf::Event::MouseButtonPressed &&
                 event.mouseButton.button == sf::Mouse::Left)
             {
-                int mx = event.mouseButton.x;
-                int my = event.mouseButton.y;
+                sf::Vector2i pixelPos(event.mouseButton.x, event.mouseButton.y);
+                sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
+                
+                int mx = static_cast<int>(worldPos.x);
+                int my = static_cast<int>(worldPos.y);
 
                 if (currentState == AppState::MENU_SCREEN)
                 {
