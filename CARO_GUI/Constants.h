@@ -11,7 +11,8 @@ enum class AppState {
     LOAD_SCREEN,
     SAVE_SCREEN,
     SETTINGS_SCREEN,
-    IN_GAME_SCREEN
+    IN_GAME_SCREEN, 
+    ABOUT_SCREEN
 };
 
 // ============================================================

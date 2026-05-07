@@ -64,3 +64,4 @@ void HandleSaveInput(
     int& currentLoadedSlot, std::string& currentLoadedName,
     bool& isConfirmOverwrite, int& slotToOverwrite
 );
+void HandleAboutInput(int mouseX, int mouseY, AppState& currentState, sf::Sound& errSound);

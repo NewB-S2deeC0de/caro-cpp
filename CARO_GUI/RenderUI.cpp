@@ -298,6 +298,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
         "PVE - Choi voi May",
         "Cai Dat",
         "Tai Game (Load)",
+        "Thong Tin (About)",
         "Thoat"
     };
 
@@ -313,7 +314,8 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
     const float BTN_H = 62.f;
     const float START_Y = 288.f;
     const float STEP_Y = 82.f;
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
     for (int i = 0; i < 5; ++i)
     {
@@ -578,7 +580,8 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
     const float BTN_START_Y = (gameMode == GameMode::PVP) ? 395.f : 420.f;
     const char* gameBtns[] = { "Undo", "Save Game", "Main Menu" };
     const sf::Color btnAccent[] = { Cyber::Cyan, Cyber::CyanDim, Cyber::MagDim };
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
     const float BTN_H = 52.0f;
 
     for (int i = 0; i < 3; ++i) {
@@ -760,24 +763,33 @@ void DrawPieces(sf::RenderWindow& window, int boardSize)
     }
 }
 
-void DrawHoverEffect(sf::RenderWindow& window, int mouseX, int mouseY, int boardSize)
+// ============================================================
+//  DrawHoverEffect
+// ============================================================
+void DrawHoverEffect(sf::RenderWindow& window, int gX, int gY, int boardSize)
 {
     int cellSz = GetDynCellSize(boardSize);
-    int gX = (mouseX - Config::OFFSET_X) / cellSz;
-    int gY = (mouseY - Config::OFFSET_Y) / cellSz;
 
-    if (gX >= 0 && gX < boardSize && gY >= 0 && gY < boardSize && GetCell(gX, gY) == 0) {
+    if (gX >= 0 && gX < boardSize && gY >= 0 && gY < boardSize) {
         float rx = static_cast<float>(Config::OFFSET_X + gX * cellSz);
         float ry = static_cast<float>(Config::OFFSET_Y + gY * cellSz);
 
-        // Tô mờ ô vuông
+        int cellState = GetCell(gX, gY);
+
+        sf::Color fillCol = sf::Color(0, 200, 255, 22);
+        sf::Color borderCol = sf::Color(0, 255, 255, 180);
+
+        if (cellState != 0) {
+            fillCol = sf::Color(255, 220, 0, 25);   // Vàng nền mờ
+            borderCol = sf::Color(255, 220, 0, 200); // Vàng viền rõ
+        }
+
         sf::RectangleShape hr({ static_cast<float>(cellSz), static_cast<float>(cellSz) });
         hr.setPosition(rx, ry);
-        hr.setFillColor(sf::Color(0, 255, 255, 30));
+        hr.setFillColor(fillCol);
         window.draw(hr);
-
-        // Kẹp ngàm Neon 4 góc ôm lấy ô cờ
-        DrawCornerBrackets(window, rx + 2.f, ry + 2.f, static_cast<float>(cellSz) - 4.f, static_cast<float>(cellSz) - 4.f, Cyber::Cyan, 8.f, 2.f);
+        
+        DrawCornerBrackets(window, rx + 2.f, ry + 2.f, static_cast<float>(cellSz) - 4.f, static_cast<float>(cellSz) - 4.f, borderCol, 6.f, 1.5f);
     }
 }
 
@@ -828,7 +840,9 @@ void DrawSettings(sf::RenderWindow& window, const sf::Font& font, int boardSize,
     std::string values[] = { std::to_string(boardSize), ruleBlock2 ? "BAT (ON)" : "TAT (OFF)", std::to_string(aiLevel), std::to_string((int)sfxVolume), bgmEnabled ? "BAT (ON)" : "TAT (OFF)" };
 
     const float SY = 200.f, LX = 250.f, CX = 650.f, RG = 80.f;
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
     for (int i = 0; i < 5; ++i) {
         float cy = SY + i * RG;
@@ -869,7 +883,9 @@ void DrawLoadScreen(sf::RenderWindow& window, const sf::Font& font)
     sf::Text title("DANH SACH DIEM LUU", font, 45);
     title.setFillColor(Cyber::Yellow); title.setStyle(sf::Text::Bold); title.setPosition(80.f, 50.f); window.draw(title);
 
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
+
     int hoveredSlot = -1;
     const float BTN_W = 400.f, BTN_H = 75.f, START_X = 80.f, START_Y = 150.f, DEL_W = 70.f;
 
@@ -958,7 +974,9 @@ void DrawSaveScreen(sf::RenderWindow& window, const sf::Font& font, bool isNamin
     sf::Text title("CHON O DE LUU VAN GAME", font, 45);
     title.setFillColor(Cyber::Yellow); title.setStyle(sf::Text::Bold); title.setPosition(80.f, 50.f); window.draw(title);
 
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
+
     int hoveredSlot = -1;
     const float BTN_W = 480.f, BTN_H = 75.f, START_X = 80.f, START_Y = 150.f;
 
@@ -1324,4 +1342,66 @@ void DrawCharacterSelectScreen(sf::RenderWindow& window, const sf::Font& font, b
     sf::Color startCol = (selectionStep == 4) ? Cyber::Yellow : Cyber::Gray;
     DrawNeonRect(window, btnX, btnY, 300.f, 70.f, startHov && (selectionStep == 4) ? sf::Color(80, 70, 20) : Cyber::BgBtn, startCol, startHov && (selectionStep == 4) ? 3.f : 1.f);
     DrawCentredText(window, font, "BAT DAU GAME", 28, startCol, W / 2.f, btnY + 35.f);
+}
+void DrawAbout(sf::RenderWindow& window, const sf::Font& font)
+{
+    float W = static_cast<float>(Config::WIN_WIDTH);
+    float H = static_cast<float>(Config::WIN_HEIGHT);
+    DrawScanlines(window, 0, 0, W, H, sf::Color(0, 0, 0, 18));
+
+    // 1. Tiêu đề chính
+    DrawCentredText(window, font, "ABOUT US", 60, Cyber::Yellow, W / 2.f, 80.f);
+
+    // 2. Khung nội dung chính
+    float bW = 850.f, bH = 520.f;
+    float bX = (W - bW) / 2.f;
+    float bY = 160.f;
+
+    DrawNeonRect(window, bX, bY, bW, bH, Cyber::BgPanel, Cyber::Cyan, 1.5f);
+    DrawCornerBrackets(window, bX, bY, bW, bH, Cyber::Cyan, 20.f, 2.f);
+
+    // 3. Nội dung
+    float startX = bX + 60.f;
+    float currY = bY + 45.f;
+    float lineGap = 38.f;
+
+    // --- Dòng PROJECT: CARO MASTER căn giữa ---
+    DrawCentredText(window, font, "PROJECT: CARO MASTER", 26, Cyber::White, W / 2.f, currY + 10.f);
+    currY += lineGap + 15.f; // Nhích xuống để phần danh sách bên dưới thoáng hơn
+
+    // Lambda vẽ các dòng căn lề trái
+    auto DrawRow = [&](const std::string& text, sf::Color color, bool bold = false) {
+        sf::Text t(text, font, 22);
+        t.setFillColor(color);
+        if (bold) t.setStyle(sf::Text::Bold);
+        t.setPosition(startX, currY);
+        window.draw(t);
+        currY += lineGap;
+        };
+
+    DrawRow("Class: 25CTT7 - HCMUS", Cyber::White);
+    DrawRow("Instructor: Mr. Truong Toan Thinh", Cyber::White);
+
+    currY += 10.f;
+    DrawRow("---------------- DEVELOPMENT TEAM ----------------", Cyber::CyanDim);
+    currY += 15.f;
+
+    // Danh sách thành viên (Căn lề trái)
+    DrawRow("24120164 - Nguyen The Anh", Cyber::White);
+    DrawRow("24120115 - Le Tan Phat", Cyber::White);
+    DrawRow("24120479 - Vu Duc Trung", Cyber::White);
+    DrawRow("24120311 - Nguyen Mai Tung Hieu", Cyber::White);
+    DrawRow("24120180 - Nguyen Dai Hieu", Cyber::White);
+
+    // 4. Nút QUAY LAI nằm DƯỚI khung
+    const float BW = 250.f, BH = 55.f;
+    float BX = W / 2.f - BW / 2.f;
+    float BY = bY + bH + 30.f;
+
+    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    bool hov = (mp.x >= BX && mp.x <= BX + BW && mp.y >= BY && mp.y <= BY + BH);
+
+    DrawNeonRect(window, BX, BY, BW, BH, hov ? sf::Color(30, 40, 70) : Cyber::BgBtn, hov ? Cyber::Magenta : Cyber::Grid, 2.f);
+    DrawCentredText(window, font, "QUAY LAI", 22, hov ? Cyber::White : Cyber::Gray, BX + BW / 2.f, BY + BH / 2.f);
+}
 }
