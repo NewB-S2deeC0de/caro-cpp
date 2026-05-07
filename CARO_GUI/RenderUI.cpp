@@ -307,6 +307,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
         Cyber::Magenta,
         Cyber::Yellow,
         sf::Color(80, 200, 255),
+        sf::Color(50, 255, 150), 
         sf::Color(255, 60, 80)
     };
 
@@ -317,7 +318,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
     sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 6; ++i)
     {
         float bX = W / 2.f - BTN_W / 2.f;
         float bY = START_Y + i * STEP_Y;
@@ -1153,7 +1154,8 @@ void DrawCharacterSelectScreen(sf::RenderWindow& window, const sf::Font& font, b
 
     const char* charNames[] = { "HACKER", "CYBORG", "NINJA", "CORPO" };
     sf::Color charColors[] = { Cyber::Cyan, Cyber::Magenta, Cyber::Yellow, Cyber::NeonRed };
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
     int hoveredChar = -1;
 
     bool p1Selecting = (selectionStep == 0);
@@ -1398,10 +1400,10 @@ void DrawAbout(sf::RenderWindow& window, const sf::Font& font)
     float BX = W / 2.f - BW / 2.f;
     float BY = bY + bH + 30.f;
 
-    sf::Vector2i mp = sf::Mouse::getPosition(window);
+    sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
     bool hov = (mp.x >= BX && mp.x <= BX + BW && mp.y >= BY && mp.y <= BY + BH);
 
     DrawNeonRect(window, BX, BY, BW, BH, hov ? sf::Color(30, 40, 70) : Cyber::BgBtn, hov ? Cyber::Magenta : Cyber::Grid, 2.f);
     DrawCentredText(window, font, "QUAY LAI", 22, hov ? Cyber::White : Cyber::Gray, BX + BW / 2.f, BY + BH / 2.f);
-}
 }

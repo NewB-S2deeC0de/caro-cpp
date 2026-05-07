@@ -492,6 +492,10 @@ int main()
             // TRUYỀN THÊM p1Char, p2Char, p1Name, p2Name, charSprites VÀO ĐÂY:
             DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites);
         }
+        else if (currentState == AppState::ABOUT_SCREEN)
+        {
+            DrawAbout(window, font);
+        }
 
         window.display();
     }
