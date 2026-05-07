@@ -5,7 +5,14 @@
 // ============================================================
 //  Enum trạng thái luồng game
 // ============================================================
-enum class AppState { MENU_SCREEN, IN_GAME_SCREEN, SETTINGS_SCREEN, LOAD_SCREEN, SAVE_SCREEN, ABOUT_SCREEN
+enum class AppState {
+    MENU_SCREEN,
+    CHAR_SELECT,      // <--- THÊM ĐÚNG CHỮ NÀY VÀO DÁNH SÁCH
+    LOAD_SCREEN,
+    SAVE_SCREEN,
+    SETTINGS_SCREEN,
+    IN_GAME_SCREEN, 
+    ABOUT_SCREEN
 };
 
 // ============================================================
@@ -37,7 +44,7 @@ struct Config {
     static const int CELL_SIZE = 30;
 
     // Khoảng cách từ mép cửa sổ trò chơi tới bàn cờ 
-    static const int OFFSET_X = 50;
+    static const int OFFSET_X = 350;
     static const int OFFSET_Y = 50;
 
     // Panel bên phải, dành chỗ cho bảng thông tin, undo, restart...

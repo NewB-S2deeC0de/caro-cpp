@@ -376,8 +376,41 @@ void HandleLoadInput(sf::RenderWindow& window, int mouseX, int mouseY, AppState&
     if (mouseX >= 80.f && mouseX <= 280.f && mouseY >= 680.f && mouseY <= 740.f) currentState = AppState::MENU_SCREEN;
 }
 
-void HandleSaveInput(sf::RenderWindow& window, int mouseX, int mouseY, AppState& currentState, float timeRemaining, bool isPlayerTurn, float& saveNotifTimer, sf::Sound& errSound, bool& isNaming, int& selectedSlot, std::string& inputName, int& currentLoadedSlot, std::string& currentLoadedName) {
+void HandleSaveInput(
+    sf::RenderWindow& window, int mouseX, int mouseY, AppState& currentState,
+    float timeRemaining, bool isPlayerTurn, float& saveNotifTimer, sf::Sound& errSound,
+    bool& isNaming, int& selectedSlot, std::string& inputName,
+    int& currentLoadedSlot, std::string& currentLoadedName,
+    bool& isConfirmOverwrite, int& slotToOverwrite)
+{
     const float START_X = 80.f, START_Y = 150.f, BTN_W = 480.f, BTN_H = 75.f;
+    float w = Config::WIN_WIDTH / 2.f, h = Config::WIN_HEIGHT / 2.f;
+
+    // --- XỬ LÝ CLICK TRÊN HỘP THOẠI XÁC NHẬN GHI ĐÈ ---
+    if (isConfirmOverwrite) {
+        float btnW = 120.f, btnH = 50.f;
+        float yesX = w - 140.f, yesY = h + 30.f;
+        float noX = w + 20.f, noY = h + 30.f;
+
+        if (mouseX >= yesX && mouseX <= yesX + btnW && mouseY >= yesY && mouseY <= yesY + btnH) {
+            // Chọn "CÓ" -> Ghi đè thẳng vào slot cũ mang tên đó
+            if (SaveGameSlot(slotToOverwrite, timeRemaining, isPlayerTurn ? 1 : 0, inputName.c_str())) {
+                saveNotifTimer = 2.0f;
+                currentLoadedSlot = slotToOverwrite;
+                currentLoadedName = inputName;
+                isConfirmOverwrite = false;
+                isNaming = false;
+                currentState = AppState::IN_GAME_SCREEN;
+            }
+            else errSound.play();
+        }
+        else if (mouseX >= noX && mouseX <= noX + btnW && mouseY >= noY && mouseY <= noY + btnH) {
+            // Chọn "KHÔNG" -> Tắt bảng hỏi, cho phép đổi tên khác
+            isConfirmOverwrite = false;
+        }
+        return; // Thoát ngay để không dính các input ở dưới
+    }
+
     if (!isNaming) {
         for (int i = 1; i <= 5; ++i) {
             float bY = START_Y + (i - 1) * 95.f;
@@ -388,20 +421,38 @@ void HandleSaveInput(sf::RenderWindow& window, int mouseX, int mouseY, AppState&
         if (mouseX >= 80.f && mouseX <= 280.f && mouseY >= 680.f && mouseY <= 740.f) currentState = AppState::IN_GAME_SCREEN;
     }
     else {
-        float w = Config::WIN_WIDTH / 2.f, h = Config::WIN_HEIGHT / 2.f;
+        // Xử lý khi nhấn nút "CHẤP NHẬN" lưu
         if (mouseX >= w - 100.f && mouseX <= w + 100.f && mouseY >= h + 35.f && mouseY <= h + 85.f) {
             if (inputName.empty()) inputName = "Game khong ten";
-            if (SaveGameSlot(selectedSlot, timeRemaining, isPlayerTurn ? 1 : 0, inputName.c_str())) {
-                saveNotifTimer = 2.0f;
 
-                // Ghi nhớ lại Slot và Tên lần đầu tiên Save này!
-                currentLoadedSlot = selectedSlot;
-                currentLoadedName = inputName;
-
-                isNaming = false;
-                currentState = AppState::IN_GAME_SCREEN;
+            // 1. Kiểm tra vòng lặp xem có tên nào trùng không
+            int existingSlot = -1;
+            for (int i = 1; i <= 5; ++i) {
+                int bs, mv, tn; char gName[64];
+                if (PeekGameSlot(i, &bs, &mv, &tn, gName)) {
+                    if (inputName == std::string(gName)) {
+                        existingSlot = i;
+                        break;
+                    }
+                }
             }
-            else errSound.play();
+
+            // 2. Nếu tên trùng thì bật cờ Confirm, chưa lưu vội
+            if (existingSlot != -1) {
+                isConfirmOverwrite = true;
+                slotToOverwrite = existingSlot;
+            }
+            // 3. Nếu không trùng thì lưu bình thường vào slot đã chọn
+            else {
+                if (SaveGameSlot(selectedSlot, timeRemaining, isPlayerTurn ? 1 : 0, inputName.c_str())) {
+                    saveNotifTimer = 2.0f;
+                    currentLoadedSlot = selectedSlot;
+                    currentLoadedName = inputName;
+                    isNaming = false;
+                    currentState = AppState::IN_GAME_SCREEN;
+                }
+                else errSound.play();
+            }
         }
         else if (mouseX < w - 250.f || mouseX > w + 250.f || mouseY < h - 125.f || mouseY > h + 125.f) {
             isNaming = false;
