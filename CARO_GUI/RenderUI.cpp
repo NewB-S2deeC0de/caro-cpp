@@ -7,6 +7,25 @@
 #include <iomanip>
 #include <vector>
 #include <cstdlib>
+static int  s_lastMoveX  = -1;
+static int  s_lastMoveY  = -1;
+static int  s_lastPlayer = 0;    
+static sf::Clock s_flashClock;
+ 
+void SetLastMove(int x, int y, int player)
+{
+    s_lastMoveX  = x;
+    s_lastMoveY  = y;
+    s_lastPlayer = player;
+    s_flashClock.restart();
+}
+ 
+void ResetLastMove()
+{
+    s_lastMoveX  = -1;
+    s_lastMoveY  = -1;
+    s_lastPlayer = 0;
+}
 
 namespace Cyber {
     const sf::Color Cyan{ 0,  255, 255, 255 };
@@ -760,6 +779,66 @@ void DrawPieces(sf::RenderWindow& window, int boardSize)
                 dot.setFillColor(sf::Color(255, 100, 200, 255));
                 window.draw(dot);
             }
+        }
+    }
+    if (s_lastMoveX >= 0 && s_lastMoveX < boardSize &&
+        s_lastMoveY >= 0 && s_lastMoveY < boardSize)
+    {
+        float elapsed = s_flashClock.getElapsedTime().asSeconds();
+        const float FLASH_DURATION = 2.5f;  // Tổng thời gian hiệu ứng (giây)
+        const float PULSE_SPEED    = 6.5f;  // Tốc độ nhấp nháy (Hz)
+ 
+        if (elapsed < FLASH_DURATION)
+        {
+            // Fade dần về 0 theo thời gian
+            float fadeRatio = 1.f - (elapsed / FLASH_DURATION);
+            // Xung sin để tạo nhịp sáng/tối
+            float pulse     = (std::sin(elapsed * PULSE_SPEED) + 1.f) * 0.5f;
+            float intensity = pulse * fadeRatio;
+ 
+            // Chọn màu theo người vừa đánh
+            sf::Color glowCol = (s_lastPlayer == 1) ? Cyber::Cyan : Cyber::Magenta;
+ 
+            float rx = ox + s_lastMoveX * cellSz;
+            float ry = oy + s_lastMoveY * cellSz;
+            float sz = static_cast<float>(cellSz);
+ 
+            // Lớp 1: Nền glow mờ phủ toàn ô
+            sf::RectangleShape glowBg({ sz, sz });
+            glowBg.setPosition(rx, ry);
+            glowBg.setFillColor(sf::Color(
+                glowCol.r, glowCol.g, glowCol.b,
+                static_cast<sf::Uint8>(60.f * intensity)));
+            window.draw(glowBg);
+ 
+            // Lớp 2: Viền neon nhấp nháy
+            sf::RectangleShape flashBorder({ sz, sz });
+            flashBorder.setPosition(rx, ry);
+            flashBorder.setFillColor(sf::Color::Transparent);
+            flashBorder.setOutlineThickness(2.5f);
+            flashBorder.setOutlineColor(sf::Color(
+                glowCol.r, glowCol.g, glowCol.b,
+                static_cast<sf::Uint8>(230.f * intensity)));
+            window.draw(flashBorder);
+ 
+            // Lớp 3: Dấu góc (corner brackets) sáng nhấp nháy
+            DrawCornerBrackets(window,
+                rx + 3.f, ry + 3.f, sz - 6.f, sz - 6.f,
+                sf::Color(glowCol.r, glowCol.g, glowCol.b,
+                    static_cast<sf::Uint8>(255.f * intensity)),
+                7.f, 2.5f);
+ 
+            // Lớp 4: Chấm nhỏ ở trung tâm ô (điểm đánh dấu)
+            float cx2 = rx + sz / 2.f;
+            float cy2 = ry + sz / 2.f;
+            float dotR = 3.5f;
+            sf::CircleShape dot(dotR);
+            dot.setOrigin(dotR, dotR);
+            dot.setPosition(cx2, cy2);
+            dot.setFillColor(sf::Color(
+                glowCol.r, glowCol.g, glowCol.b,
+                static_cast<sf::Uint8>(255.f * intensity)));
+            window.draw(dot);
         }
     }
 }

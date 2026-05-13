@@ -351,6 +351,7 @@ int main()
                             else
                             {
                                 gameStatus = res;
+                                SetLastMove(p1CursorX, p1CursorY, 1);
                                 timeRemaining = 60.f; 
                                 lastUndoPlayer = -1; 
                                 isPlayerTurn = false; 
@@ -393,6 +394,7 @@ int main()
                             }
                             else {
                                 gameStatus = res;
+                                SetLastMove(p2CursorX, p2CursorY, 2);
                                 timeRemaining = 60.f;
                                 lastUndoPlayer = -1;
                                 isPlayerTurn = true; // Trả lại lượt cho Player 1
@@ -425,6 +427,7 @@ int main()
                 if (aiX != -1)
                 {
                     gameStatus = result;
+                    SetLastMove(aiX, aiY, 2);  // Nhấp nháy ô AI vừa đánh
                     if (gameStatus != 0)
                     {
                         GetWinLine(&winX1, &winY1, &winX2, &winY2);
