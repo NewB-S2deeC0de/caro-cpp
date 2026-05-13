@@ -1,28 +1,30 @@
 #include <stdlib.h>
-#include <time.h>
-#include <limits.h>
+#include <vector>
+#include <algorithm>
+#include <climits>
 
 #define EMPTY 0
 #define BOT 1
 #define PLAYER 2
 
-// Mảng điểm Heuristic tĩnh (Dùng cho Level 4, 5, 6)
-// Điểm tăng theo cấp số nhân để ưu tiên chuỗi dài
-const long AttackScores[7] = { 0, 9, 54, 162, 1458, 13122, 118098 };
-const long DefendScores[7] = { 0, 3, 27, 99, 729, 6561, 59049 };
-
-// Struct đơn giản để tiện trả về cùng lúc x, y
-struct Move {
+// Struct lưu trữ nước đi và điểm số
+struct MoveVal {
     int x;
     int y;
+    long long score;
 };
 
-// Hàm kiểm tra tọa độ hợp lệ
+// Hàm sắp xếp nước đi theo điểm giảm dần
+bool CompareMoves(const MoveVal& a, const MoveVal& b) {
+    return a.score > b.score;
+}
+
+// Kiểm tra tọa độ hợp lệ
 bool IsValid(int x, int y, int boardSize) {
     return (x >= 0 && x < boardSize && y >= 0 && y < boardSize);
 }
 
-// Hàm kiểm tra xem ô này có nằm gần các quân cờ khác không (Bán kính 2 ô)
+// Kiểm tra xem ô có lân cận quân cờ nào không (để tối ưu không quét toàn bàn cờ trống)
 bool HasNeighbor(const int board[30][30], int boardSize, int x, int y) {
     for (int i = -2; i <= 2; i++) {
         for (int j = -2; j <= 2; j++) {
@@ -35,225 +37,219 @@ bool HasNeighbor(const int board[30][30], int boardSize, int x, int y) {
     return false;
 }
 
-// Khai báo trước hàm tính điểm Heuristic (Cực kỳ quan trọng)
-long EvaluateCell(const int board[30][30], int boardSize, int x, int y);
-
 // ==========================================
-// LEVEL 1: Đánh ngẫu nhiên
+// HỆ THỐNG CHẤM ĐIỂM (HEURISTIC)
 // ==========================================
-void Level1_Random(const int board[30][30], int boardSize, int* outX, int* outY) {
-    int emptyX[900], emptyY[900]; // Mảng lưu các ô trống (30x30 = 900 ô)
-    int count = 0;
+// Điểm thưởng cho các chuỗi cờ (5: Thắng, 4 hở: Gần thắng,...)
+long long GetPatternScore(int count, int blocks) {
+    if (count >= 5) return 100000000;         // Thắng chắc
+    if (blocks == 2) return 0;                
 
-    for (int i = 0; i < boardSize; i++) {
-        for (int j = 0; j < boardSize; j++) {
-            if (board[i][j] == EMPTY) {
-                emptyX[count] = i;
-                emptyY[count] = j;
-                count++;
-            }
-        }
-    }
-
-    if (count > 0) {
-        int r = rand() % count;
-        *outX = emptyX[r];
-        *outY = emptyY[r];
-    }
+    if (count == 4) return (blocks == 0) ? 10000000 : 1000000; // 4 hở / 4 chặn 1 đầu
+    if (count == 3) return (blocks == 0) ? 100000 : 10000;     // 3 hở / 3 chặn 1 đầu
+    if (count == 2) return (blocks == 0) ? 1000 : 100;         // 2 hở / 2 chặn 1 đầu
+    if (count == 1) return 10;
+    return 0;
 }
 
-// ==========================================
-// LEVEL 2: Đánh ngẫu nhiên có khoanh vùng
-// ==========================================
-void Level2_ProximityRandom(const int board[30][30], int boardSize, int* outX, int* outY) {
-    int validX[900], validY[900];
-    int count = 0;
-
-    for (int i = 0; i < boardSize; i++) {
-        for (int j = 0; j < boardSize; j++) {
-            // Chỉ thêm vào danh sách nếu là ô trống VÀ có quân cờ lân cận
-            if (board[i][j] == EMPTY && HasNeighbor(board, boardSize, i, j)) {
-                validX[count] = i;
-                validY[count] = j;
-                count++;
-            }
-        }
-    }
-
-    // Nếu bàn cờ trống trơn, đánh vào giữa
-    if (count == 0) {
-        *outX = boardSize / 2;
-        *outY = boardSize / 2;
-    }
-    else {
-        int r = rand() % count;
-        *outX = validX[r];
-        *outY = validY[r];
-    }
-}
-
-// ==========================================
-// LEVEL 3 & 4: Tính điểm Heuristic Cục bộ
-// ==========================================
-// L3: Chỉ quan tâm điểm lớn nhất (chặn/thắng)
-// L4: Quét toàn bàn cờ một cách cẩn thận
-void Level4_Heuristic(const int board[30][30], int boardSize, int* outX, int* outY) {
-    long maxScore = -1;
-
-    for (int i = 0; i < boardSize; i++) {
-        for (int j = 0; j < boardSize; j++) {
-            if (board[i][j] == EMPTY && HasNeighbor(board, boardSize, i, j)) {
-                long currentScore = EvaluateCell(board, boardSize, i, j);
-                if (currentScore > maxScore) {
-                    maxScore = currentScore;
-                    *outX = i;
-                    *outY = j;
-                }
-            }
-        }
-    }
-
-    // Fallback nếu bàn cờ trống
-    if (maxScore == -1) {
-        *outX = boardSize / 2;
-        *outY = boardSize / 2;
-    }
-}
-
-// ==========================================
-// LEVEL 5 & 6: Minimax Đệ quy
-// ==========================================
-// Hàm Minimax thuần đệ quy, không lưu state
-long Minimax(int board[30][30], int boardSize, int depth, int alpha, int beta, bool isBotTurn) {
-    // 1. Kiểm tra điều kiện dừng (Thắng/Thua/Hòa hoặc hết depth)
-    // 2. Tìm các nước đi tiềm năng (Top N nước đi điểm cao nhất)
-    // 3. Vòng lặp thử từng nước đi:
-    //      board[x][y] = isBotTurn ? BOT : PLAYER;
-    //      score = Minimax(board, boardSize, depth - 1, alpha, beta, !isBotTurn);
-    //      board[x][y] = EMPTY; // Hoàn tác nước đi (Backtracking)
-    //      Cắt tỉa Alpha-Beta...
-    // Return score;
-    return 0; // Trả về tạm
-}
-
-void Level6_DeepMinimax(const int board[30][30], int boardSize, int* outX, int* outY) {
-    // Tạo bản sao của bàn cờ để Minimax chạy giả lập (vì const board không cho phép sửa)
-    int tempBoard[30][30];
-    for (int i = 0; i < 30; i++)
-        for (int j = 0; j < 30; j++)
-            tempBoard[i][j] = board[i][j];
-
-    // Gọi hàm Minimax... 
-    // (Lưu ý: Đối với 30x30, phải kết hợp Heuristic để lọc nước đi trước khi gọi Minimax)
-}
-
-void CalculateBestMove(const int board[30][30], int boardSize, int level, int* outX, int* outY) {
-    static bool seedInitialized = false;
-    if (!seedInitialized) {
-        srand(time(NULL));
-        seedInitialized = true;
-    }
-
-    *outX = boardSize / 2; // Default
-    *outY = boardSize / 2;
-
-    if (level == 1) {
-        Level1_Random(board, boardSize, outX, outY);
-    }
-    else if (level == 2) {
-        Level2_ProximityRandom(board, boardSize, outX, outY);
-    }
-    else if (level == 3) {
-        // Level 3 dùng chung hàm với Level 4 nhưng bộ điểm Heuristic bị tinh giản
-        // (Hoặc đơn giản là để nó chạy Heuristic nhưng thêm yếu tố random để dễ hơn L4)
-        Level4_Heuristic(board, boardSize, outX, outY);
-    }
-    else if (level == 4) {
-        Level4_Heuristic(board, boardSize, outX, outY);
-    }
-    else if (level == 5) {
-        // Level 5: Minimax độ sâu 2
-        Level6_DeepMinimax(board, boardSize, outX, outY); // Cần cấu hình depth = 2
-    }
-    else if (level == 6) {
-        // Level 6: Minimax độ sâu 4+ kèm sắp xếp nước đi
-        Level6_DeepMinimax(board, boardSize, outX, outY); // Cần cấu hình depth = 4
-    }
-}
-
-// Hàm con: Tính điểm cho một hướng cụ thể
-// dx, dy là vector hướng (ví dụ: dx=1, dy=0 là chiều ngang)
-long EvaluateDirection(const int board[30][30], int boardSize, int x, int y, int dx, int dy, int player) {
-    int consecutive = 0;
+// Tính điểm của 1 ô cụ thể khi ĐẶT THỬ 1 quân cờ (Dùng để lọc nước đi)
+long long EvaluateDirectionForMove(const int board[30][30], int boardSize, int x, int y, int dx, int dy, int player) {
+    int count = 1;
     int blocks = 0;
 
-    // 1. Quét về phía chiều dương của hướng (dx, dy)
-    int i = x + dx;
-    int j = y + dy;
-    while (IsValid(i, j, boardSize) && board[i][j] == player) {
-        consecutive++;
-        i += dx;
-        j += dy;
+    int nx = x + dx, ny = y + dy;
+    while (IsValid(nx, ny, boardSize) && board[nx][ny] == player) { count++; nx += dx; ny += dy; }
+    if (!IsValid(nx, ny, boardSize) || board[nx][ny] != EMPTY) blocks++;
+
+    nx = x - dx; ny = y - dy;
+    while (IsValid(nx, ny, boardSize) && board[nx][ny] == player) { count++; nx -= dx; ny -= dy; }
+    if (!IsValid(nx, ny, boardSize) || board[nx][ny] != EMPTY) blocks++;
+
+    return GetPatternScore(count, blocks);
+}
+
+// Tổng hợp điểm Công + Thủ của một ô (Heuristic cục bộ)
+long long EvaluateCell(const int board[30][30], int boardSize, int x, int y) {
+    long long score = 0;
+    int dx[] = { 1, 0, 1, 1 };
+    int dy[] = { 0, 1, 1, -1 };
+
+    for (int d = 0; d < 4; d++) {
+        long long attack = EvaluateDirectionForMove(board, boardSize, x, y, dx[d], dy[d], BOT);
+        long long defend = EvaluateDirectionForMove(board, boardSize, x, y, dx[d], dy[d], PLAYER);
+        // Cộng tổng: Vừa muốn tạo thế công cho mình, vừa muốn chặn thế công của địch
+        score += attack + defend;
     }
-    // Nếu đụng biên hoặc đụng quân địch -> Bị chặn 1 đầu
-    if (!IsValid(i, j, boardSize) || (board[i][j] != EMPTY && board[i][j] != player)) {
-        blocks++;
+    return score;
+}
+
+// ==========================================
+// TẠO & SẮP XẾP NƯỚC ĐI (MOVE ORDERING)
+// ==========================================
+// Lấy ra danh sách K nước đi tiềm năng nhất để Minimax không bị quá tải
+std::vector<MoveVal> GetTopMoves(const int board[30][30], int boardSize, int maxMoves) {
+    std::vector<MoveVal> moves;
+    for (int i = 0; i < boardSize; i++) {
+        for (int j = 0; j < boardSize; j++) {
+            if (board[i][j] == EMPTY && HasNeighbor(board, boardSize, i, j)) {
+                long long score = EvaluateCell(board, boardSize, i, j);
+                moves.push_back({ i, j, score });
+            }
+        }
+    }
+    std::sort(moves.begin(), moves.end(), CompareMoves);
+    if (moves.size() > maxMoves) moves.resize(maxMoves);
+    return moves;
+}
+
+// ==========================================
+// ĐÁNH GIÁ TOÀN BÀN CỜ (Dùng cho nhánh lá của Minimax)
+// ==========================================
+long long EvaluateBoardState(const int board[30][30], int boardSize) {
+    long long botScore = 0;
+    long long playerScore = 0;
+
+    int dx[] = { 1, 0, 1, 1 };
+    int dy[] = { 0, 1, 1, -1 };
+
+    for (int i = 0; i < boardSize; i++) {
+        for (int j = 0; j < boardSize; j++) {
+            if (board[i][j] == EMPTY) continue;
+            int player = board[i][j];
+
+            for (int d = 0; d < 4; d++) {
+                int prevX = i - dx[d], prevY = j - dy[d];
+                // Chỉ quét theo chiều tiến để tránh tính lặp 1 chuỗi 2 lần
+                if (IsValid(prevX, prevY, boardSize) && board[prevX][prevY] == player) continue;
+
+                int count = 1;
+                int blocks = 0;
+
+                if (!IsValid(prevX, prevY, boardSize) || board[prevX][prevY] != EMPTY) blocks++;
+
+                int nextX = i + dx[d], nextY = j + dy[d];
+                while (IsValid(nextX, nextY, boardSize) && board[nextX][nextY] == player) {
+                    count++;
+                    nextX += dx[d];
+                    nextY += dy[d];
+                }
+
+                if (!IsValid(nextX, nextY, boardSize) || board[nextX][nextY] != EMPTY) blocks++;
+
+                long long score = GetPatternScore(count, blocks);
+                if (player == BOT) botScore += score;
+                else playerScore += score;
+            }
+        }
+    }
+    return botScore - playerScore;
+}
+
+// ==========================================
+// THUẬT TOÁN MINIMAX VỚI ALPHA-BETA PRUNING
+// ==========================================
+long long Minimax(int board[30][30], int boardSize, int depth, long long alpha, long long beta, bool isMaximizing) {
+    long long boardVal = EvaluateBoardState(board, boardSize);
+
+    // Nếu đạt độ sâu tối đa hoặc đã có người thắng (điểm quá lớn)
+    if (depth == 0 || std::abs(boardVal) > 50000000) {
+        return boardVal;
     }
 
-    // 2. Quét về phía chiều âm của hướng (-dx, -dy)
-    i = x - dx;
-    j = y - dy;
-    while (IsValid(i, j, boardSize) && board[i][j] == player) {
-        consecutive++;
-        i -= dx;
-        j -= dy;
-    }
-    // Nếu đụng biên hoặc đụng quân địch -> Bị chặn đầu còn lại
-    if (!IsValid(i, j, boardSize) || (board[i][j] != EMPTY && board[i][j] != player)) {
-        blocks++;
-    }
+    std::vector<MoveVal> moves = GetTopMoves(board, boardSize, 12); // Chỉ xét 12 nước đi tốt nhất
+    if (moves.empty()) return boardVal; // Bàn cờ hòa hoặc đầy
 
-    // Luật cờ Caro cơ bản: Bị chặn 2 đầu thì chuỗi này coi như vứt (không tạo thành 5 được)
-    // Ngoại trừ trường hợp đã có đủ 5 quân thì vẫn thắng
-    if (blocks == 2 && consecutive < 4) {
-        return 0;
-    }
+    if (isMaximizing) { // Lượt của BOT
+        long long maxEval = -LLONG_MAX;
+        for (const auto& move : moves) {
+            board[move.x][move.y] = BOT;
+            long long eval = Minimax(board, boardSize, depth - 1, alpha, beta, false);
+            board[move.x][move.y] = EMPTY; // Backtracking
 
-    // Giới hạn để không bị out of bound mảng điểm (tối đa mảng có 7 phần tử)
-    int piecesToScore = consecutive + 1; // +1 vì tính cả quân cờ nếu được đặt tại (x,y)
-    if (piecesToScore > 6) piecesToScore = 6;
-
-    // Trả về điểm tương ứng từ mảng Heuristic tĩnh
-    if (player == BOT) {
-        return AttackScores[piecesToScore];
+            maxEval = std::max(maxEval, eval);
+            alpha = std::max(alpha, eval);
+            if (beta <= alpha) break; // Cắt tỉa Alpha-Beta
+        }
+        return maxEval;
     }
-    else {
-        return DefendScores[piecesToScore];
+    else { // Lượt của PLAYER
+        long long minEval = LLONG_MAX;
+        for (const auto& move : moves) {
+            board[move.x][move.y] = PLAYER;
+            long long eval = Minimax(board, boardSize, depth - 1, alpha, beta, true);
+            board[move.x][move.y] = EMPTY; // Backtracking
+
+            minEval = std::min(minEval, eval);
+            beta = std::min(beta, eval);
+            if (beta <= alpha) break; // Cắt tỉa Alpha-Beta
+        }
+        return minEval;
     }
 }
 
-// Hàm chính: Tính tổng điểm Tấn công + Phòng thủ tại ô (x, y)
-long EvaluateCell(const int board[30][30], int boardSize, int x, int y) {
-    long totalScore = 0;
+// ==========================================
+// HÀM TÌM NƯỚC ĐI TỐI ƯU DỰA TRÊN ĐỘ SÂU (LEVEL)
+// ==========================================
+void FindBestMoveMinimax(int board[30][30], int boardSize, int depth, int* outX, int* outY) {
+    std::vector<MoveVal> moves = GetTopMoves(board, boardSize, 12);
+    if (moves.empty()) return;
 
-    // Mảng định nghĩa 4 hướng cần quét (chỉ cần lấy 1 nửa vòng tròn vì hàm quét cả âm/dương)
-    // [0]: Ngang (1, 0)
-    // [1]: Dọc (0, 1)
-    // [2]: Chéo chính (1, 1)
-    // [3]: Chéo phụ (1, -1)
-    int dirX[] = { 1, 0, 1, 1 };
-    int dirY[] = { 0, 1, 1, -1 };
-
-    // Cộng dồn điểm đánh giá từ 4 hướng
-    for (int d = 0; d < 4; d++) {
-        // Điểm nếu Bot đánh vào ô này (Tấn công)
-        long attackScore = EvaluateDirection(board, boardSize, x, y, dirX[d], dirY[d], BOT);
-
-        // Điểm nếu Người đánh vào ô này (Phòng thủ / Chặn địch)
-        long defendScore = EvaluateDirection(board, boardSize, x, y, dirX[d], dirY[d], PLAYER);
-
-        totalScore += (attackScore + defendScore);
+    // Cấp độ DỄ: Chỉ lấy điểm đánh giá cục bộ cao nhất, không nội suy tương lai
+    if (depth <= 1) {
+        *outX = moves[0].x;
+        *outY = moves[0].y;
+        return;
     }
 
-    return totalScore;
+    // Cấp độ VỪA và KHÓ: Chạy Minimax
+    long long bestScore = -LLONG_MAX;
+    *outX = moves[0].x;
+    *outY = moves[0].y;
+
+    for (const auto& move : moves) {
+        board[move.x][move.y] = BOT;
+        long long score = Minimax(board, boardSize, depth - 1, -LLONG_MAX, LLONG_MAX, false);
+        board[move.x][move.y] = EMPTY;
+
+        if (score > bestScore) {
+            bestScore = score;
+            *outX = move.x;
+            *outY = move.y;
+        }
+    }
+}
+
+// ==========================================
+// HÀM CHÍNH ĐƯỢC GỌI TỪ NGOÀI
+// ==========================================
+void CalculateBestMove(const int board[30][30], int boardSize, int level, int* outX, int* outY) {
+    // Tạo bản sao bàn cờ để thuật toán có thể điền thử (vì mảng truyền vào là const)
+    int tempBoard[30][30];
+    int pieceCount = 0;
+
+    for (int i = 0; i < boardSize; i++) {
+        for (int j = 0; j < boardSize; j++) {
+            tempBoard[i][j] = board[i][j];
+            if (board[i][j] != EMPTY) pieceCount++;
+        }
+    }
+
+    // Nước đầu tiên của ván cờ luôn đánh ở chính giữa bàn
+    if (pieceCount == 0) {
+        *outX = boardSize / 2;
+        *outY = boardSize / 2;
+        return;
+    }
+
+    // Phân luồng Cấp Độ
+    if (level == 1) {
+        FindBestMoveMinimax(tempBoard, boardSize, 2, outX, outY);
+    }
+    else if (level == 2) {
+        FindBestMoveMinimax(tempBoard, boardSize, 4, outX, outY);
+    }
+    else {
+        FindBestMoveMinimax(tempBoard, boardSize, 1, outX, outY);
+
+    }
 }
