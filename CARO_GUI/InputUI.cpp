@@ -96,12 +96,7 @@ void HandleInGameInput(
     std::string& currentLoadedName)
 
 {
-    static sf::Clock clickCooldown;
-    if (clickCooldown.getElapsedTime().asMilliseconds() < 150)
-    {
-        return; // Click quá nhanh thì bỏ qua không xử lý buffer này
-    }
-    clickCooldown.restart();
+    
     // --- A. Khu vực bàn cờ ---
     int cellSz = GetDynCellSize(boardSize);
     const int BOARD_LEFT = Config::OFFSET_X;
@@ -119,13 +114,16 @@ void HandleInGameInput(
     const float pX = PanelX(boardSize);
     const float BTN_W = static_cast<float>(Config::PANEL_W);
     const float BTN_H = 52.f;
+    const float BTN_START_Y = (gameMode == GameMode::PVP) ? 395.f : 420.f;
+    const float HIT_PADDING = 8.f;
+
 
     for (int i = 0; i < 3; ++i)
     {
         float bX = pX;
-        float bY = 420.f + i * 80.f;
-        if (!(mouseX >= bX && mouseX <= bX + BTN_W &&
-            mouseY >= bY && mouseY <= bY + BTN_H))
+        float bY = BTN_START_Y + i * 80.f;
+        if (!(mouseX >= bX - HIT_PADDING && mouseX <= bX + BTN_W + HIT_PADDING &&
+            mouseY >= bY - HIT_PADDING && mouseY <= bY + BTN_H + HIT_PADDING))
         {
             continue;
         }
