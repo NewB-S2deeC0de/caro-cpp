@@ -10,6 +10,28 @@
 #include "RenderUI.h"
 #include "InputUI.h"
 #include <iostream>
+#include <fstream>
+#include <string>
+
+static std::string HintStatePath_Main(int slotId)
+{
+    return "save_slot_" + std::to_string(slotId) + "_hint.bin";
+}
+
+static void SaveHintState(int slotId, const int hintLeft[2])
+{
+    if (slotId < 1 || slotId > 5) return;
+
+    std::ofstream file(HintStatePath_Main(slotId), std::ios::out | std::ios::binary);
+    if (!file.is_open()) return;
+
+    const char magic[8] = { 'H','I','N','T','S','A','V','\0' };
+    int version = 1;
+
+    file.write(magic, sizeof(magic));
+    file.write(reinterpret_cast<const char*>(&version), sizeof(version));
+    file.write(reinterpret_cast<const char*>(hintLeft), sizeof(int) * 2);
+}
 
 int main()
 {
@@ -22,7 +44,7 @@ int main()
     sf::Font font;
     if (!font.loadFromFile("assets/Rajdhani.ttf"))
     {
-        std::cout << "Loi: Khong tim thay Rajdhani.ttf" << std::endl;
+        std::cout << "Error: Cannot find Rajdhani.ttf" << std::endl;
     }
 
     sf::SoundBuffer errBuffer;
@@ -43,7 +65,7 @@ int main()
     sf::Texture menuBgTex;
     if (!menuBgTex.loadFromFile("assets/cyberpunk.png"))
     {
-        std::cout << "Loi: Khong tim thay cyberpunk.png" << std::endl;
+        std::cout << "Error: Cannot find cyberpunk.png" << std::endl;
     }
     sf::Sprite menuBgSprite(menuBgTex);
     menuBgSprite.setScale(
@@ -54,7 +76,7 @@ int main()
     sf::Texture charSelBgTex;
     if (!charSelBgTex.loadFromFile("assets/NenChonCharacter.jpg"))
     {
-        std::cout << "Loi: Khong tim thay NenChonCharacter.jpg" << std::endl;
+        std::cout << "Error: Cannot find NenChonCharacter.jpg" << std::endl;
     }
     sf::Sprite charSelBgSprite(charSelBgTex);
     charSelBgSprite.setScale(
@@ -68,7 +90,7 @@ int main()
 
     for (int i = 0; i < 4; ++i) {
         if (!charTex[i].loadFromFile(charFiles[i])) {
-            std::cout << "Loi: Khong tim thay " << charFiles[i] << std::endl;
+            std::cout << "Error: Cannot find " << charFiles[i] << std::endl;
         }
         charSprites[i].setTexture(charTex[i]);
     }
@@ -85,6 +107,7 @@ int main()
     int   aiLevel = 3;
     float sfxVolume = 100.f;
     bool  bgmEnabled = true;
+    bool  virusMode = false;
 
     // Biến cho con trỏ 
     int p1CursorX = boardSize / 2;
@@ -93,14 +116,20 @@ int main()
     int p2CursorY = boardSize / 2;
 
     int winX1 = -1;
-    int winY1 = -1; 
+    int winY1 = -1;
     int winX2 = -1;
     int winY2 = -1;
+
+    int hintX = -1;
+    int hintY = -1;
+    int hintLeft[2] = { 1, 1 };
 
     // ── Trạng thái Undo (PVP) ────────────────────────────────-
     int undoLeft[2] = { Config::UNDO_MAX, Config::UNDO_MAX };
     int lastUndoPlayer = -1;
     float saveNotifTimer = 0.f;
+    bool isConfirmMainMenu = false;
+    bool isConfirmNewGame = false;
 
     bool isNaming = false;
     int selectedSlotToSave = -1;
@@ -109,6 +138,9 @@ int main()
     std::string currentLoadedName = "";
     bool isConfirmOverwrite = false;
     int slotToOverwrite = -1;
+
+    bool isPaused = false;
+    bool settingsFromPause = false;
 
     int p1Char = -1;
     int p2Char = -1;
@@ -205,7 +237,7 @@ int main()
             {
                 sf::Vector2i pixelPos(event.mouseButton.x, event.mouseButton.y);
                 sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
-                
+
                 int mx = static_cast<int>(worldPos.x);
                 int my = static_cast<int>(worldPos.y);
 
@@ -258,6 +290,127 @@ int main()
                 }
                 else if (event.mouseButton.button == sf::Mouse::Left)
                 {
+                    if (isPaused && currentState == AppState::IN_GAME_SCREEN && !isConfirmMainMenu && !isConfirmNewGame)
+                    {
+                        const float btnW = 280.f;
+                        const float btnH = 50.f;
+                        const float gapY = 13.f;
+                        const float W = static_cast<float>(Config::WIN_WIDTH);
+                        const float H = static_cast<float>(Config::WIN_HEIGHT);
+                        const float boxH = 405.f;
+                        const float boxY = std::max(24.f, H / 2.f - boxH / 2.f - 4.f);
+                        const float startX = W / 2.f - btnW / 2.f;
+                        const float startY = boxY + 118.f;
+
+                        for (int i = 0; i < 4; ++i)
+                        {
+                            float by = startY + i * (btnH + gapY);
+                            if (mx >= startX && mx <= startX + btnW && my >= by && my <= by + btnH)
+                            {
+                                if (i == 0) // RESUME
+                                {
+                                    isPaused = false;
+                                }
+                                else if (i == 1) // NEW GAME
+                                {
+                                    isConfirmNewGame = true;
+                                }
+                                else if (i == 2) // SETTINGS
+                                {
+                                    settingsFromPause = true;
+                                    isPaused = false;
+                                    currentState = AppState::SETTINGS_SCREEN;
+                                }
+                                else if (i == 3) // MAIN MENU
+                                {
+                                    isConfirmMainMenu = true;
+                                }
+                                break;
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (isConfirmNewGame)
+                    {
+                        const float btnW = 190.f;
+                        const float btnH = 55.f;
+                        const float gap = 34.f;
+                        float W = static_cast<float>(Config::WIN_WIDTH);
+                        float H = static_cast<float>(Config::WIN_HEIGHT);
+                        float boxH = 250.f;
+                        float boxY = H / 2.f - boxH / 2.f;
+                        float yesX = W / 2.f - btnW - gap / 2.f;
+                        float noX = W / 2.f + gap / 2.f;
+                        float btnY = boxY + 160.f;
+
+                        if (mx >= yesX && mx <= yesX + btnW && my >= btnY && my <= btnY + btnH)
+                        {
+                            InitGame(boardSize, ruleBlock2, aiLevel);
+                            SetVirusMode(virusMode);
+                            isConfirmNewGame = false;
+                            isConfirmMainMenu = false;
+                            isConfirmNewGame = false;
+                            isPaused = false;
+                            settingsFromPause = false;
+
+                            isPlayerTurn = true;
+                            timeRemaining = 60.f;
+                            gameStatus = 0;
+                            winX1 = winY1 = winX2 = winY2 = -1;
+                            hintX = -1;
+                            hintY = -1;
+                            hintLeft[0] = 1;
+                            hintLeft[1] = 1;
+                            undoLeft[0] = Config::UNDO_MAX;
+                            undoLeft[1] = Config::UNDO_MAX;
+                            lastUndoPlayer = -1;
+                            saveNotifTimer = 0.f;
+                            currentLoadedSlot = -1;
+                            currentLoadedName.clear();
+                            p1CursorX = boardSize / 2;
+                            p1CursorY = boardSize / 2;
+                            p2CursorX = boardSize / 2;
+                            p2CursorY = boardSize / 2;
+                        }
+                        else if (mx >= noX && mx <= noX + btnW && my >= btnY && my <= btnY + btnH)
+                        {
+                            isConfirmNewGame = false;
+                        }
+                        continue;
+                    }
+
+                    if (isConfirmMainMenu)
+                    {
+                        const float btnW = 190.f;
+                        const float btnH = 55.f;
+                        const float gap = 34.f;
+                        float W = static_cast<float>(Config::WIN_WIDTH);
+                        float H = static_cast<float>(Config::WIN_HEIGHT);
+                        float boxH = 250.f;
+                        float boxY = H / 2.f - boxH / 2.f;
+                        float yesX = W / 2.f - btnW - gap / 2.f;
+                        float noX = W / 2.f + gap / 2.f;
+                        float btnY = boxY + 160.f;
+
+                        if (mx >= yesX && mx <= yesX + btnW && my >= btnY && my <= btnY + btnH)
+                        {
+                            isConfirmMainMenu = false;
+                            isConfirmNewGame = false;
+                            isPaused = false;
+                            currentState = AppState::MENU_SCREEN;
+                            settingsFromPause = false;
+                            hintX = -1;
+                            hintY = -1;
+                            saveNotifTimer = 0.f;
+                        }
+                        else if (mx >= noX && mx <= noX + btnW && my >= btnY && my <= btnY + btnH)
+                        {
+                            isConfirmMainMenu = false;
+                        }
+                        continue;
+                    }
+
                     if (currentState == AppState::MENU_SCREEN)
                     {
                         HandleMenuInput(
@@ -269,6 +422,7 @@ int main()
                         );
 
                         if (currentState == AppState::IN_GAME_SCREEN) {
+                            SetVirusMode(virusMode);
                             currentState = AppState::CHAR_SELECT;
                             p1Char = -1; p2Char = -1;
                             p1Name = ""; p2Name = "";
@@ -280,47 +434,116 @@ int main()
                         winX1 = winY1 = winX2 = winY2 = -1;
                         undoLeft[0] = Config::UNDO_MAX;
                         undoLeft[1] = Config::UNDO_MAX;
+                        hintLeft[0] = 1;
+                        hintLeft[1] = 1;
                         lastUndoPlayer = -1;
                         saveNotifTimer = 0.f;
+                        isConfirmMainMenu = false;
+                        isConfirmNewGame = false;
+                        isPaused = false;
                     }
                     else if (currentState == AppState::LOAD_SCREEN)
                     {
-                        HandleLoadInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, gameStatus, errSound, currentLoadedSlot, currentLoadedName);
+                        AppState beforeLoadState = currentState;
+
+                        HandleLoadInput(
+                            window, mx, my,
+                            currentState,
+                            timeRemaining,
+                            isPlayerTurn,
+                            gameStatus,
+                            errSound,
+                            currentLoadedSlot,
+                            currentLoadedName,
+                            gameMode,
+                            hintLeft
+                        );
+
+                        // Save cũ chưa lưu avatar/tên người chơi nên sau khi load phải gán lại mặc định.
+                        // Nếu không gán, p1Char/p2Char có thể vẫn là -1 làm khung nhân vật bị trống.
+                        if (beforeLoadState == AppState::LOAD_SCREEN &&
+                            currentState == AppState::IN_GAME_SCREEN)
+                        {
+                            if (p1Char == -1) p1Char = 0;
+                            if (p2Char == -1) p2Char = 1;
+                            if (p1Name.empty())
+                            {
+                                p1Name = currentLoadedName.empty() ? "PLAYER 1" : currentLoadedName;
+                            }
+
+                            if (gameMode == GameMode::PVE)
+                            {
+                                p2Name = "AI";
+                            }
+                            else
+                            {
+                                if (p2Name.empty()) p2Name = "PLAYER 2";
+                            }
+
+                            // Đưa trạng thái chọn nhân vật về trạng thái đã hoàn tất.
+                            selectionStep = 4;
+                            typingState = 0;
+                            animatingCharIdx = -1;
+                            virusMode = IsVirusMode();
+                        }
                     }
                     else if (currentState == AppState::SAVE_SCREEN)
                     {
-                        HandleSaveInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, saveNotifTimer, errSound, isNaming, selectedSlotToSave, currentInputName, currentLoadedSlot, currentLoadedName, isConfirmOverwrite, slotToOverwrite);
+                        HandleSaveInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, saveNotifTimer, errSound, isNaming, selectedSlotToSave, currentInputName, currentLoadedSlot, currentLoadedName, gameMode, isConfirmOverwrite, slotToOverwrite, hintLeft);
                     }
                     else if (currentState == AppState::IN_GAME_SCREEN)
                     {
                         HandleInGameInput(
-                            mx, my, currentState,
-                            boardSize, gameMode,
-                            isPlayerTurn, gameStatus, timeRemaining,
-                            undoLeft, lastUndoPlayer, saveNotifTimer,
-                            errSound, currentLoadedSlot,
-                            currentLoadedName
+                            event.mouseButton.x, event.mouseButton.y,
+                            currentState, boardSize, gameMode,
+                            isPlayerTurn, gameStatus, timeRemaining, undoLeft,
+                            lastUndoPlayer, saveNotifTimer, errSound,
+                            currentLoadedSlot, currentLoadedName,
+                            ruleBlock2, aiLevel,
+                            hintX, hintY, hintLeft,
+                            isConfirmMainMenu
                         );
                     }
                     else if (currentState == AppState::SETTINGS_SCREEN)
                     {
+                        AppState beforeSettings = currentState;
                         HandleSettingsInput(
                             mx, my, currentState,
                             boardSize, ruleBlock2, aiLevel,
-                            sfxVolume, bgmEnabled, errSound
+                            sfxVolume, bgmEnabled, virusMode, errSound, settingsFromPause
                         );
                         if (bgmEnabled) bgMusic.play();
                         else            bgMusic.pause();
+
+                        // Neu vao Settings tu Pause Menu thi nut quay lai se dua ve van dang choi,
+                        // khong quay thang ra Main Menu.
+                        if (settingsFromPause && currentState == AppState::MENU_SCREEN)
+                        {
+                            currentState = AppState::IN_GAME_SCREEN;
+                            isPaused = true;
+                            settingsFromPause = false;
+                        }
                     }
                     else if (currentState == AppState::ABOUT_SCREEN) // Xử lý nhấn chuột màn About
                     {
                         HandleAboutInput(mx, my, currentState, errSound);
                     }
-              
+
                 }
             }
-            if (event.type == sf::Event::KeyPressed && currentState == AppState::IN_GAME_SCREEN)
+            if (event.type == sf::Event::KeyPressed && currentState == AppState::IN_GAME_SCREEN && !isConfirmMainMenu && !isConfirmNewGame)
             {
+                if (event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::P)
+                {
+                    isPaused = !isPaused;
+                    continue;
+                }
+
+                if (isPaused)
+                {
+                    continue;
+                }
+
                 if (isPlayerTurn)
                 {
                     if (event.key.code == sf::Keyboard::W)
@@ -351,10 +574,12 @@ int main()
                             else
                             {
                                 gameStatus = res;
-                                timeRemaining = 60.f; 
-                                lastUndoPlayer = -1; 
-                                isPlayerTurn = false; 
-                                if (gameMode == GameMode::PVE && gameStatus == 0) 
+                                timeRemaining = 60.f;
+                                lastUndoPlayer = -1;
+                                hintX = -1;
+                                hintY = -1;
+                                isPlayerTurn = false;
+                                if (gameMode == GameMode::PVE && gameStatus == 0)
                                 {
                                     StartAIThinking();
                                 }
@@ -395,6 +620,8 @@ int main()
                                 gameStatus = res;
                                 timeRemaining = 60.f;
                                 lastUndoPlayer = -1;
+                                hintX = -1;
+                                hintY = -1;
                                 isPlayerTurn = true; // Trả lại lượt cho Player 1
                             }
                         }
@@ -408,8 +635,11 @@ int main()
             saveNotifTimer -= dt;
         }
 
-        UpdateAI();
-        if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0)
+        if (!isConfirmMainMenu && !isConfirmNewGame && !isPaused)
+        {
+            UpdateAI();
+        }
+        if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0 && !isConfirmMainMenu && !isConfirmNewGame && !isPaused)
         {
             timeRemaining -= dt;
             if (timeRemaining <= 0.f)
@@ -430,6 +660,8 @@ int main()
                         GetWinLine(&winX1, &winY1, &winX2, &winY2);
                     }
                     isPlayerTurn = true;
+                    hintX = -1;
+                    hintY = -1;
                     timeRemaining = 60.f;
                 }
             }
@@ -465,13 +697,23 @@ int main()
         }
         else if (currentState == AppState::SETTINGS_SCREEN)
         {
-            DrawSettings(window, font, boardSize, ruleBlock2, aiLevel, sfxVolume, bgmEnabled);
+            DrawSettings(window, font, boardSize, ruleBlock2, aiLevel, sfxVolume, bgmEnabled, virusMode, settingsFromPause);
         }
         else if (currentState == AppState::IN_GAME_SCREEN)
         {
             window.draw(menuBgSprite);
             DrawBoard(window, boardSize);
             DrawPieces(window, boardSize);
+            DrawVirusCells(window, font, boardSize);
+            if (gameStatus == 0)
+            {
+                DrawVirusStatusBadge(window, font);
+            }
+
+            if (gameStatus == 0 && hintX != -1 && hintY != -1)
+            {
+                DrawHintEffect(window, font, hintX, hintY, boardSize);
+            }
 
             bool showHover = (gameStatus == 0) && (gameMode == GameMode::PVP || isPlayerTurn);
             if (showHover)
@@ -490,7 +732,22 @@ int main()
 
             if (gameStatus != 0) DrawWinLine(window, winX1, winY1, winX2, winY2, boardSize);
             // TRUYỀN THÊM p1Char, p2Char, p1Name, p2Name, charSprites VÀO ĐÂY:
-            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites);
+            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, hintLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites);
+
+            if (isPaused)
+            {
+                DrawPauseOverlay(window, font);
+            }
+
+            if (isConfirmMainMenu)
+            {
+                DrawConfirmMainMenuOverlay(window, font);
+            }
+
+            if (isConfirmNewGame)
+            {
+                DrawConfirmNewGameOverlay(window, font);
+            }
         }
         else if (currentState == AppState::ABOUT_SCREEN)
         {
