@@ -5,6 +5,8 @@
 #include <atomic>
 #include <future>
 #include <cstring>
+#include <cstdlib>
+#include <ctime>
 
 // ============================================================
 //  TRẠNG THÁI BÀN CỜ
@@ -13,6 +15,7 @@ int  g_board[30][30] = { 0 };
 int  g_boardSize = 15;
 bool g_ruleBlock2 = true;
 int  g_aiLevel = 1;
+int  g_savedGameMode = 1; // 1 = PVE, 2 = PVP
 
 // Tọa độ đường thắng (cho GUI vẽ)
 int g_winStartX = -1;
@@ -22,17 +25,18 @@ int g_winEndY = -1;
 
 // ============================================================
 //  LỊCH SỬ NƯỚC ĐI – Stack để hỗ trợ Undo
-//  Mỗi MoveRecord ghi lại (x, y, player) của 1 nước đã đặt.
-//  Kích thước tối đa: 30×30 = 900 nước.
+//  MoveRecord được khai báo chung trong DataIO.h để DataIO.cpp cũng dùng được.
 // ============================================================
-struct MoveRecord {
-    int x;
-    int y; 
-    int player; // player: 1 = người (X), 2 = AI (O)
-};
-
 MoveRecord g_history[900];
 int        g_historyCount = 0;
+
+// ============================================================
+//  VIRUS MODE
+//  g_board[x][y] == 3 nghia la o virus dang khoa.
+// ============================================================
+bool g_virusMode = false;
+int  g_virusMoveCounter = 0;
+int  g_virusTTL[30][30] = { 0 };
 
 // Helper nội bộ: đẩy 1 nước vào stack
 static void PushHistory(int x, int y, int player)
@@ -46,14 +50,176 @@ static void PushHistory(int x, int y, int player)
     }
 }
 
+static void ClearVirusCells()
+{
+    g_virusMoveCounter = 0;
+    for (int i = 0; i < 30; ++i)
+    {
+        for (int j = 0; j < 30; ++j)
+        {
+            g_virusTTL[i][j] = 0;
+            if (g_board[i][j] == 3) g_board[i][j] = 0;
+        }
+    }
+}
+
+static int CountVirusCells()
+{
+    int cnt = 0;
+    for (int i = 0; i < g_boardSize; ++i)
+        for (int j = 0; j < g_boardSize; ++j)
+            if (g_virusTTL[i][j] > 0 && g_board[i][j] == 3) ++cnt;
+    return cnt;
+}
+
+static int GetVirusWaveSizeInternal()
+{
+    // Virus se nang cap theo so nuoc da di trong van.
+    //  0 - 11 nuoc: moi dot gay nhiem 1 o
+    // 12 - 23 nuoc: moi dot gay nhiem 2 o
+    // tu 24 nuoc  : moi dot gay nhiem 3 o
+    if (g_historyCount >= 24) return 3;
+    if (g_historyCount >= 12) return 2;
+    return 1;
+}
+
+static int GetVirusMaxCellsInternal()
+{
+    // Khong gioi han virus o muc 5/10/16 nua.
+    // Virus se tiep tuc lan sau moi dot cho den khi ban co het o trong
+    // hoac van dau ket thuc vi co nguoi chien thang / hoa.
+    return g_boardSize * g_boardSize;
+}
+
+static bool InfectVirusCell(int x, int y, int threatLevel)
+{
+    if (x < 0 || x >= g_boardSize || y < 0 || y >= g_boardSize) return false;
+    if (g_board[x][y] != 0) return false;
+
+    g_board[x][y] = 3;
+    // Gia tri nay khong con la TTL nua. No dai dien cho muc gay hai 1/2/3
+    // de GUI co the ve so tren o virus.
+    g_virusTTL[x][y] = threatLevel;
+    return true;
+}
+
+static bool FindRandomEmptyCell(int& outX, int& outY)
+{
+    int emptyCount = 0;
+    for (int i = 0; i < g_boardSize; ++i)
+        for (int j = 0; j < g_boardSize; ++j)
+            if (g_board[i][j] == 0) ++emptyCount;
+
+    if (emptyCount <= 0) return false;
+
+    int pick = std::rand() % emptyCount;
+    for (int i = 0; i < g_boardSize; ++i)
+    {
+        for (int j = 0; j < g_boardSize; ++j)
+        {
+            if (g_board[i][j] == 0)
+            {
+                if (pick == 0)
+                {
+                    outX = i;
+                    outY = j;
+                    return true;
+                }
+                --pick;
+            }
+        }
+    }
+    return false;
+}
+
+static void SpawnVirusWave()
+{
+    if (!g_virusMode) return;
+
+    int threatLevel = GetVirusWaveSizeInternal();
+    int maxCells = GetVirusMaxCellsInternal();
+    int active = CountVirusCells();
+    if (active >= maxCells) return;
+
+    static bool seeded = false;
+    if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
+
+    int centerX = -1;
+    int centerY = -1;
+    if (!FindRandomEmptyCell(centerX, centerY)) return;
+
+    int infected = 0;
+    if (InfectVirusCell(centerX, centerY, threatLevel))
+    {
+        ++infected;
+        ++active;
+    }
+
+    // Khi threatLevel = 2/3, virus uu tien lay them o sat ben canh de tao cum gay nhieu.
+    const int dirs[8][2] = {
+        { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
+        { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }
+    };
+    bool used[8] = { false };
+
+    while (infected < threatLevel && active < maxCells)
+    {
+        bool placed = false;
+
+        for (int tries = 0; tries < 16 && !placed; ++tries)
+        {
+            int k = std::rand() % 8;
+            if (used[k]) continue;
+            used[k] = true;
+
+            int nx = centerX + dirs[k][0];
+            int ny = centerY + dirs[k][1];
+            if (InfectVirusCell(nx, ny, threatLevel))
+            {
+                ++infected;
+                ++active;
+                placed = true;
+            }
+        }
+
+        // Neu xung quanh tam khong con o trong thi lay ngau nhien o khac.
+        if (!placed)
+        {
+            int rx = -1;
+            int ry = -1;
+            if (!FindRandomEmptyCell(rx, ry)) break;
+            if (InfectVirusCell(rx, ry, threatLevel))
+            {
+                ++infected;
+                ++active;
+            }
+            else break;
+        }
+    }
+}
+
+static void AdvanceVirusAfterValidMove()
+{
+    if (!g_virusMode) return;
+
+    // Ban moi: bo decay/burst. Virus khong tu mat di nua.
+    // Do gay hai tang theo so nuoc da di: dot sau co the nhiem 2 hoac 3 o.
+    ++g_virusMoveCounter;
+    if (g_virusMoveCounter >= 4)
+    {
+        g_virusMoveCounter = 0;
+        SpawnVirusWave();
+    }
+}
+
 // ============================================================
 //  LUỒNG AI
 // ============================================================
 std::atomic<bool> g_isAiThinking = false;
 std::future<AIMoveResult> g_aiTask;
 
-static AIMoveResult g_aiResult{ -1, -1, 0 }; 
-static std::atomic<bool> g_hasAIResult = false; 
+static AIMoveResult g_aiResult{ -1, -1, 0 };
+static std::atomic<bool> g_hasAIResult = false;
 // ============================================================
 //  InitGame – Khởi tạo / reset toàn bộ trạng thái
 // ============================================================
@@ -68,12 +234,13 @@ extern "C" CARO_API void InitGame(int size, bool ruleBlock2, int level)
         for (int j = 0; j < 30; ++j)
         {
             g_board[i][j] = 0;
-}
+        }
     }
 
-    // Reset lịch sử và đường thắng
+    // Reset lịch sử, đường thắng và virus cell
     g_historyCount = 0;
     g_winStartX = g_winStartY = g_winEndX = g_winEndY = -1;
+    ClearVirusCells();
 }
 
 // ============================================================
@@ -124,7 +291,13 @@ extern "C" CARO_API int ProcessMove(int x, int y, int player)
     g_board[x][y] = player;
     PushHistory(x, y, player);
 
-    return CheckWinCondition(x, y, player);
+    int result = CheckWinCondition(x, y, player);
+    if (result == 0)
+    {
+        AdvanceVirusAfterValidMove();
+    }
+
+    return result;
 }
 
 // ============================================================
@@ -238,18 +411,18 @@ extern "C" CARO_API int GetAIResult(int* outX, int* outY)
 {
     if (!g_hasAIResult)
     {
-        return 0; 
+        return 0;
     }
     *outX = g_aiResult.x;
     *outY = g_aiResult.y;
-    
+
     int result = g_aiResult.state;
 
     // Reset sau khi lay ket qua
 
-    g_hasAIResult = false; 
+    g_hasAIResult = false;
 
-    return result; 
+    return result;
 }
 
 extern "C" CARO_API void UpdateAI()
@@ -263,27 +436,52 @@ extern "C" CARO_API void UpdateAI()
     // Kiem tra task da hoan thanh chua (KHONG block)
     if (g_aiTask.valid() &&
         g_aiTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+    {
+        // Lay ket qua tu worker thread
+        auto result = g_aiTask.get();
+
+        // Duy nhat tai day moi duoc phep sua state
+        g_board[result.x][result.y] = 2;
+        PushHistory(result.x, result.y, 2);
+
+        result.state = CheckWinCondition(result.x, result.y, 2);
+        if (result.state == 0)
         {
-            // Lay ket qua tu worker thread
-            auto result = g_aiTask.get(); 
-
-            // Duy nhat tai day moi duoc phep sua state
-            g_board[result.x][result.y] = 2;
-            PushHistory(result.x, result.y, 2); 
-
-            result.state = CheckWinCondition(result.x, result.y, 2);
-
-            g_aiResult = result; 
-            g_hasAIResult = true; 
-
-            // Danh dau AI da xong
-        g_isAiThinking = false;
+            AdvanceVirusAfterValidMove();
         }
+
+        g_aiResult = result;
+        g_hasAIResult = true;
+
+        // Danh dau AI da xong
+        g_isAiThinking = false;
+    }
 }
 
 // ============================================================
 //  Save / Load
 // ============================================================
+
+
+extern "C" CARO_API void SetSaveGameMode(int mode)
+{
+    if (mode == 1 || mode == 2) g_savedGameMode = mode;
+}
+
+extern "C" CARO_API int GetSavedGameMode()
+{
+    return g_savedGameMode;
+}
+
+extern "C" CARO_API int GetSlotGameMode(int slotId)
+{
+    return PeekSlotGameMode(slotId);
+}
+
+extern "C" CARO_API int GetSlotVirusMode(int slotId)
+{
+    return PeekSlotVirusMode(slotId);
+}
 
 extern "C" CARO_API bool SaveGameSlot(int slotId, float timeLeft, int isPlayerTurn, const char* gameName) {
     return SaveSlotBinary(slotId, timeLeft, isPlayerTurn, gameName);
@@ -314,6 +512,90 @@ extern "C" CARO_API bool GetSlotPreview(int slotId, int* outBoardSize, int* outM
     }
     return false;
 }
+extern "C" CARO_API bool GetHintMove(int player, int* outX, int* outY)
+{
+    if (!outX || !outY) return false;
+    if (player != 1 && player != 2) return false;
+
+    *outX = -1;
+    *outY = -1;
+
+    int hintBoard[30][30] = { 0 };
+
+    for (int i = 0; i < g_boardSize; ++i)
+    {
+        for (int j = 0; j < g_boardSize; ++j)
+        {
+            // Virus cell xem nhu o bi chan.
+            if (g_board[i][j] == 3)
+            {
+                hintBoard[i][j] = (player == 1) ? 1 : 1;
+                continue;
+            }
+
+            if (player == 1)
+            {
+                if (g_board[i][j] == 1) hintBoard[i][j] = 2;
+                else if (g_board[i][j] == 2) hintBoard[i][j] = 1;
+                else hintBoard[i][j] = 0;
+            }
+            else
+            {
+                hintBoard[i][j] = g_board[i][j];
+            }
+        }
+    }
+
+    int hx = -1;
+    int hy = -1;
+    CalculateBestMove(hintBoard, g_boardSize, g_aiLevel, &hx, &hy);
+
+    if (hx < 0 || hx >= g_boardSize || hy < 0 || hy >= g_boardSize) return false;
+    if (g_board[hx][hy] != 0) return false;
+
+    *outX = hx;
+    *outY = hy;
+    return true;
+}
+
+extern "C" CARO_API void SetVirusMode(bool enabled)
+{
+    g_virusMode = enabled;
+    if (!enabled)
+    {
+        ClearVirusCells();
+    }
+}
+
+extern "C" CARO_API bool IsVirusMode()
+{
+    return g_virusMode;
+}
+
+extern "C" CARO_API int GetVirusCell(int x, int y)
+{
+    if (x < 0 || x >= g_boardSize || y < 0 || y >= g_boardSize) return 0;
+    if (g_board[x][y] == 3 && g_virusTTL[x][y] > 0) return g_virusTTL[x][y];
+    return 0;
+}
+
+extern "C" CARO_API void GetVirusInfo(bool* outEnabled, int* outActiveCount, int* outMoveCounter)
+{
+    if (outEnabled) *outEnabled = g_virusMode;
+    if (outActiveCount) *outActiveCount = CountVirusCells();
+    if (outMoveCounter) *outMoveCounter = g_virusMoveCounter;
+}
+
+extern "C" CARO_API int GetVirusThreatLevel()
+{
+    return GetVirusWaveSizeInternal();
+}
+
+extern "C" CARO_API int GetVirusMaxCells()
+{
+    return GetVirusMaxCellsInternal();
+}
+
 extern "C" CARO_API int EvaluateBoard() {
     // Nếu chưa có nước cờ nào được đánh thì chắc chắn là đang chơi (0)
     if (g_historyCount == 0) return 0;

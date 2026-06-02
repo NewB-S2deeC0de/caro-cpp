@@ -23,8 +23,8 @@ static long EvaluatePattern(int count, int blocks, bool isAttack) {
     }
 
     if (isAttack) // Nếu AI đang tấn công
-    { 
-        switch (count) 
+    {
+        switch (count)
         {
         case 4:
         {
@@ -46,7 +46,7 @@ static long EvaluatePattern(int count, int blocks, bool isAttack) {
     }
     else  // Nếu AI đang phòng ngự (chặn người chơi)
     {
-        switch (count) 
+        switch (count)
         {
         case 4:
         {
@@ -69,20 +69,20 @@ static long QuickEval(const int board[30][30], int size, int x, int y, int pMode
     int dx[] = { 1, 0, 1, 1 };
     int dy[] = { 0, 1, 1, -1 };
 
-    for (int d = 0; d < 4; d++) 
+    for (int d = 0; d < 4; d++)
     {
         // Tính cho AI (Công)
         int count = 1;
         int blocks = 0;
-        for (int i = 1; i <= 4; i++) 
+        for (int i = 1; i <= 4; i++)
         {
             int nx = x + i * dx[d];
             int ny = y + i * dy[d];
 
-            if (nx < 0 || nx >= size || ny < 0 || ny >= size) 
-            { 
-                blocks++; 
-                break; 
+            if (nx < 0 || nx >= size || ny < 0 || ny >= size)
+            {
+                blocks++;
+                break;
             }
             if (board[nx][ny] == aiMode)
             {
@@ -98,15 +98,15 @@ static long QuickEval(const int board[30][30], int size, int x, int y, int pMode
             }
         }
 
-        for (int i = 1; i <= 4; i++) 
+        for (int i = 1; i <= 4; i++)
         {
             int nx = x - i * dx[d];
             int ny = y - i * dy[d];
 
-            if (nx < 0 || nx >= size || ny < 0 || ny >= size) 
+            if (nx < 0 || nx >= size || ny < 0 || ny >= size)
             {
                 blocks++;
-                break; 
+                break;
             }
             if (board[nx][ny] == aiMode)
             {
@@ -121,21 +121,21 @@ static long QuickEval(const int board[30][30], int size, int x, int y, int pMode
                 }
             }
         }
-        
+
         total += EvaluatePattern(count, blocks, true);
 
         // Tính cho Người chơi (Thủ)
         count = 1;
         blocks = 0;
-        for (int i = 1; i <= 4; i++) 
+        for (int i = 1; i <= 4; i++)
         {
             int nx = x + i * dx[d];
             int ny = y + i * dy[d];
 
-            if (nx < 0 || nx >= size || ny < 0 || ny >= size) 
+            if (nx < 0 || nx >= size || ny < 0 || ny >= size)
             {
                 blocks++;
-                break; 
+                break;
             }
             if (board[nx][ny] == pMode)
             {
@@ -151,14 +151,14 @@ static long QuickEval(const int board[30][30], int size, int x, int y, int pMode
             }
         }
 
-        for (int i = 1; i <= 4; i++) 
+        for (int i = 1; i <= 4; i++)
         {
-            int nx = x - i * dx[d]; 
+            int nx = x - i * dx[d];
             int ny = y - i * dy[d];
 
             if (nx < 0 || nx >= size || ny < 0 || ny >= size)
             {
-                blocks++; 
+                blocks++;
                 break;
             }
             if (board[nx][ny] == pMode)
@@ -263,25 +263,30 @@ static void MoveLV3(int board[30][30], int size, int pMode, int aiMode, int* out
 // 3. ĐIỀU HƯỚNG TỔNG
 // ==========================================
 void CalculateBestMove(const int board[30][30], int boardSize, int level, int* outX, int* outY) {
-    int pMode = 1; 
+    int pMode = 1;
     int aiMode = 2;
 
     // Mặc định tâm bàn cờ nếu nước đầu
     *outX = boardSize / 2;
     *outY = boardSize / 2;
 
-    int tempBoard[30][30]; 
-    for (int i = 0; i < boardSize; i++) 
+    int tempBoard[30][30];
+    for (int i = 0; i < boardSize; i++)
     {
         for (int j = 0; j < boardSize; j++)
         {
-            tempBoard[i][j] = board[i][j];
+            // Virus cell duoc ma hoa bang gia tri 3.
+            // AI xem virus nhu o bi doi thu chan, nen se khong di vao va khong tinh duong xuyen qua virus.
+            if (board[i][j] != 0 && board[i][j] != 1 && board[i][j] != 2)
+                tempBoard[i][j] = pMode;
+            else
+                tempBoard[i][j] = board[i][j];
         }
     }
 
     if (level == 1)
     {
-        MoveLV1(board, boardSize, pMode, aiMode, outX, outY);
+        MoveLV1(tempBoard, boardSize, pMode, aiMode, outX, outY);
     }
     else if (level == 2)
     {
