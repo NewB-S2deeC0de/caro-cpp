@@ -271,7 +271,6 @@ void HandleInGameInput(
             else if (i == 3)
             {
                 isRecording = !isRecording;
-                saveNotifTimer = 1.0f; 
                 return; 
             }
         }
