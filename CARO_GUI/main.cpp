@@ -40,6 +40,7 @@ int main()
         "Caro Master"
     );
     window.setFramerateLimit(60);
+    window.setKeyRepeatEnabled(false);
 
     sf::Font font;
     if (!font.loadFromFile("assets/Rajdhani.ttf"))
