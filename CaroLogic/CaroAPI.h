@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #ifdef CAROLOGIC_EXPORTS
 #define CARO_API __declspec(dllexport)
 #else
@@ -66,4 +68,6 @@ extern "C" {
     CARO_API int  GetVirusMaxCells();             // gioi han so o virus theo threat level
 
     CARO_API int  EvaluateBoard();
+
+    CARO_API bool SaveGameReplay(const std::string& filename);
 }

@@ -25,7 +25,8 @@ void HandleInGameInput(
     std::string& currentLoadedName,
     bool ruleBlock2, int aiLevel,
     int& hintX, int& hintY, int hintLeft[2],
-    bool& isConfirmMainMenu);
+    bool& isConfirmMainMenu, 
+    bool& isRecording);
 
 void HandleAboutInput(int mouseX, int mouseY, AppState& currentState, sf::Sound& errSound);
 

@@ -103,6 +103,8 @@ int main()
     bool  isPlayerTurn = true;
     float timeRemaining = 60.f;
     int   gameStatus = 0;
+    bool  isRecording = false; 
+    bool  hasSavedReplay = false; 
 
     bool  ruleBlock2 = true;
     int   aiLevel = 3;
@@ -202,6 +204,8 @@ int main()
                     }
                     else if (selectionStep == 4) {
                         currentState = AppState::IN_GAME_SCREEN;
+                        isRecording = false; 
+                        hasSavedReplay = false; 
                     }
                 }
             }
@@ -285,6 +289,9 @@ int main()
                         if (mx >= btnX && mx <= btnX + 300.f && my >= btnY && my <= btnY + 70.f) {
                             if (selectionStep == 4) {
                                 currentState = AppState::IN_GAME_SCREEN;
+
+                                isRecording = false; 
+                                hasSavedReplay = false; 
                             }
                         }
                     }
@@ -345,6 +352,7 @@ int main()
                         float noX = W / 2.f + gap / 2.f;
                         float btnY = boxY + 160.f;
 
+
                         if (mx >= yesX && mx <= yesX + btnW && my >= btnY && my <= btnY + btnH)
                         {
                             InitGame(boardSize, ruleBlock2, aiLevel);
@@ -365,6 +373,8 @@ int main()
                             hintLeft[1] = 1;
                             undoLeft[0] = Config::UNDO_MAX;
                             undoLeft[1] = Config::UNDO_MAX;
+                            isRecording = false; 
+                            hasSavedReplay = false; 
                             lastUndoPlayer = -1;
                             saveNotifTimer = 0.f;
                             currentLoadedSlot = -1;
@@ -502,8 +512,9 @@ int main()
                             currentLoadedSlot, currentLoadedName,
                             ruleBlock2, aiLevel,
                             hintX, hintY, hintLeft,
-                            isConfirmMainMenu
+                            isConfirmMainMenu, isRecording
                         );
+                        
                     }
                     else if (currentState == AppState::SETTINGS_SCREEN)
                     {
@@ -659,6 +670,7 @@ int main()
                     if (gameStatus != 0)
                     {
                         GetWinLine(&winX1, &winY1, &winX2, &winY2);
+
                     }
                     isPlayerTurn = true;
                     hintX = -1;
@@ -672,6 +684,23 @@ int main()
         if (gameStatus != 0)
         {
             if (winX1 == -1) GetWinLine(&winX1, &winY1, &winX2, &winY2);
+
+            if (isRecording && !hasSavedReplay)
+            {
+                std::time_t t = std::time(nullptr);
+                std::string filename = "replay_" + std::to_string(t) + ".rep";
+
+                if (SaveGameReplay(filename))
+                {
+                    std::cout << "Da luu file Replay: " << filename << std::endl; 
+                }
+                else
+                {
+                    std::cout << "Loi: Khong the luu file Replay!" << std::endl;
+                }
+
+                hasSavedReplay = true; 
+            }
         }
         else if (gameStatus == 0) {
             winX1 = -1; winY1 = -1; winX2 = -1; winY2 = -1;
@@ -733,7 +762,7 @@ int main()
 
             if (gameStatus != 0) DrawWinLine(window, winX1, winY1, winX2, winY2, boardSize);
             // TRUYỀN THÊM p1Char, p2Char, p1Name, p2Name, charSprites VÀO ĐÂY:
-            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, hintLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites);
+            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, hintLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites, isRecording);
 
             if (isPaused)
             {

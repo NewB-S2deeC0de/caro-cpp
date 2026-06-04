@@ -224,3 +224,31 @@ int PeekSlotVirusMode(int slotId) {
 
     return vMode ? 1 : 0;
 }
+
+bool SaveReplayBinary(const std::string& filename) {
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    if (!file.is_open()) return false;
+
+    ReplayMetadata meta = {};
+    strcpy_s(meta.magic, sizeof(meta.magic), "CAROREP");
+    meta.version = 1;
+    meta.boardSize = g_boardSize;
+    meta.ruleBlock2 = g_ruleBlock2;
+    meta.aiLevel = g_aiLevel;
+    meta.virusMode = g_virusMode;
+    meta.historyCount = g_historyCount;
+
+    std::time_t t = std::time(nullptr);
+    struct tm timeinfo;
+    localtime_s(&timeinfo, &t);
+    std::strftime(meta.replayDate, sizeof(meta.replayDate), "%d/%m/%Y %H:%M", &timeinfo);
+
+    file.write(reinterpret_cast<const char*>(&meta), sizeof(ReplayMetadata));
+
+    if (g_historyCount > 0) {
+        file.write(reinterpret_cast<const char*>(g_history), sizeof(MoveRecord) * g_historyCount);
+    }
+
+    file.close();
+    return true;
+}

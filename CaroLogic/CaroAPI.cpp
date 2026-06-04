@@ -606,3 +606,8 @@ extern "C" CARO_API int EvaluateBoard() {
     // Check lại xem nước đi cuối đó có tạo thành 5 ố thẳng hàng không
     return CheckWinCondition(lastX, lastY, lastPlayer);
 }
+
+extern "C" CARO_API bool SaveGameReplay(const std::string& filename)
+{
+    return SaveReplayBinary(filename);
+}

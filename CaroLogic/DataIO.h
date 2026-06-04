@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct MoveRecord {
     int x;
     int y;
@@ -36,3 +38,16 @@ bool DeleteSlotBinary(int slotId);
 bool PeekSlotPreview(int slotId, SaveMetadata* outMeta, int outBoard[30][30]);
 int PeekSlotGameMode(int slotId);
 int PeekSlotVirusMode(int slotId);
+
+struct ReplayMetadata {
+    char magic[8];       
+    int version;
+    int boardSize;
+    bool ruleBlock2;
+    int aiLevel;
+    bool virusMode;
+    int historyCount;    
+    char replayDate[32]; 
+};
+
+bool SaveReplayBinary(const std::string& filename);

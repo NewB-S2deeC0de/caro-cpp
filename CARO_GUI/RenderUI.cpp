@@ -436,7 +436,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
     }
 }
 
-void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeRemaining, bool isPlayerTurn, int gameStatus, int boardSize, GameMode gameMode, int undoLeft[2], int hintLeft[2], float saveNotifTimer, int p1Char, int p2Char, const std::string& p1Name, const std::string& p2Name, sf::Sprite charSprites[4])
+void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeRemaining, bool isPlayerTurn, int gameStatus, int boardSize, GameMode gameMode, int undoLeft[2], int hintLeft[2], float saveNotifTimer, int p1Char, int p2Char, const std::string& p1Name, const std::string& p2Name, sf::Sprite charSprites[4], bool isRecording)
 {
     float W = static_cast<float>(Config::WIN_WIDTH);
     float H = static_cast<float>(Config::WIN_HEIGHT);
@@ -1020,7 +1020,7 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
     const float BTN_W = 170.f;
     const float BTN_H = 50.f;
     const float BTN_GAP = 22.f;
-    float totalBtnsW = 3 * BTN_W + 2 * BTN_GAP; // Tinh tong chieu rong 3 nut
+    float totalBtnsW = 4 * BTN_W + 3 * BTN_GAP; // Tinh tong chieu rong 3 nut
 
     // Ep chieu rong panel phai du to de chua 4 nut
     float bottomPanelW = std::max(boardW + 40.f, totalBtnsW + 60.f);
@@ -1072,14 +1072,19 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
     float startBtnsX = boardCenterX - totalBtnsW / 2.f;
     float btnsY = timerY + timerH + 20.f;
 
-    std::string gameBtns[3] = { "UNDO", "HINT", "SAVE GAME" };
-    sf::Color btnColors[] = { Cyber::Cyan, sf::Color(90, 255, 170), Cyber::Yellow };
+    std::string gameBtns[4] = { "UNDO", "HINT", "SAVE GAME", isRecording ? "RECORDING" : "RECORD" };
+    sf::Color btnColors[] = {
+        Cyber::Cyan,
+        sf::Color(90, 255, 170),
+        Cyber::Yellow,
+        isRecording ? Cyber::NeonRed : sf::Color(120, 50, 60)
+    };
 
     int curHintIdx = isPlayerTurn ? 0 : 1;
     bool hintAvailable = (gameStatus == 0 && hintLeft[curHintIdx] > 0 && !(gameMode == GameMode::PVE && !isPlayerTurn));
 
     sf::Vector2f mPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         float bX = startBtnsX + i * (BTN_W + BTN_GAP);
         bool disabled = (i == 1 && !hintAvailable);
         bool hov = !disabled && (mPos.x >= bX && mPos.x <= bX + BTN_W && mPos.y >= btnsY && mPos.y <= btnsY + BTN_H);
@@ -1092,12 +1097,22 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
         Draw3DSciFiButton(window, bX, btnsY, BTN_W, BTN_H, fill, accent, hov ? 2.5f : (disabled ? 0.9f : 1.2f), hov, accent);
 
         sf::Color textCol = disabled ? sf::Color(85, 95, 110, 155) : (hov ? Cyber::White : sf::Color(175, 210, 200));
+        if (i == 3 && isRecording && !hov) 
+        {
+            float p = 0.5f + 0.5f * std::sin(st * 8.0f);
+            textCol = sf::Color(255, 150 + p * 100, 150 + p * 100);
+        }
         DrawCentredText(window, font, gameBtns[i], 20, textCol, bX + BTN_W / 2.f, btnsY + BTN_H / 2.f);
 
         if (i == 1 && hintAvailable) {
             float p = 0.5f + 0.5f * std::sin(st * 4.8f);
             DrawCornerBrackets(window, bX - 2.f, btnsY - 2.f, BTN_W + 4.f, BTN_H + 4.f,
                 sf::Color(90, 255, 170, static_cast<sf::Uint8>(120 + 95 * p)), 9.f, 1.6f);
+        }
+        else if (i == 3 && isRecording) {
+            float p = 0.5f + 0.5f * std::sin(st * 5.0f);
+            DrawCornerBrackets(window, bX - 2.f, btnsY - 2.f, BTN_W + 4.f, BTN_H + 4.f,
+                sf::Color(255, 50, 80, static_cast<sf::Uint8>(100 + 100 * p)), 9.f, 1.6f);
         }
         else if (hov) {
             DrawCornerBrackets(window, bX, btnsY, BTN_W, BTN_H, accent, 8.f, 1.5f);

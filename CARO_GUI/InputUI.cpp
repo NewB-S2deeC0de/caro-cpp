@@ -150,7 +150,8 @@ void HandleInGameInput(
     std::string& currentLoadedName,
     bool ruleBlock2, int aiLevel,
     int& hintX, int& hintY, int hintLeft[2],
-    bool& isConfirmMainMenu) // them hintLeft de moi nguoi chi goi y 1 lan
+    bool& isConfirmMainMenu, 
+    bool& isRecording) // them hintLeft de moi nguoi chi goi y 1 lan
 {
     static sf::Clock clickCooldown;
     if (clickCooldown.getElapsedTime().asMilliseconds() < 150) return;
@@ -189,12 +190,12 @@ void HandleInGameInput(
     const float BTN_W = 170.f;
     const float BTN_H = 50.f;
     const float BTN_GAP = 22.f;
-    float totalBtnsW = 3 * BTN_W + 2 * BTN_GAP;
+    float totalBtnsW = 4 * BTN_W + 3 * BTN_GAP;
     float startBtnsX = boardCenterX - totalBtnsW / 2.f;
 
     float btnsY = bottomPanelY + 20.f + timerH + 20.f;
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         float bX = startBtnsX + i * (BTN_W + BTN_GAP);
         if (mouseX >= bX && mouseX <= bX + BTN_W && mouseY >= btnsY && mouseY <= btnsY + BTN_H)
@@ -267,7 +268,12 @@ void HandleInGameInput(
                 }
                 else currentState = AppState::SAVE_SCREEN;
             }
-            return;
+            else if (i == 3)
+            {
+                isRecording = !isRecording;
+                saveNotifTimer = 1.0f; 
+                return; 
+            }
         }
     }
 }
