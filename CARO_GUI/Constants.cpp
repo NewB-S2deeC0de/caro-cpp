@@ -20,15 +20,14 @@ int GetDynCellSize(int boardSize)
     }
 
     // Không gian thực sự dành cho bàn cờ
-    const int availW = Config::WIN_WIDTH - Config::OFFSET_X
-        - Config::PANEL_W - Config::PANEL_GAP - 10;
-    const int availH = Config::WIN_HEIGHT - 2 * Config::OFFSET_Y;
+    const int availW = Config::WIN_WIDTH - 600;
+    const int availH = Config::WIN_HEIGHT - 220;
 
     int cellW = availW / boardSize;
     int cellH = availH / boardSize;
     int dynCell = std::min({ Config::CELL_SIZE, cellW, cellH });
 
-    return (dynCell < 4) ? 4 : dynCell; // tối thiểu 4px, không để quá nhỏ
+    return (dynCell < 10) ? 10 : dynCell;
 }
 
 // ============================================================
