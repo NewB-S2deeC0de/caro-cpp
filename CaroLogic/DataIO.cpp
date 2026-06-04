@@ -252,3 +252,18 @@ bool SaveReplayBinary(const std::string& filename) {
     file.close();
     return true;
 }
+
+bool LoadReplayBinary(const std::string& filename, ReplayMetadata* outMeta, MoveRecord* outHistory) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open()) return false;
+
+    file.read(reinterpret_cast<char*>(outMeta), sizeof(ReplayMetadata));
+    if (std::strcmp(outMeta->magic, "CAROREP") != 0) return false;
+
+    if (outMeta->historyCount > 0) {
+        file.read(reinterpret_cast<char*>(outHistory), sizeof(MoveRecord) * outMeta->historyCount);
+    }
+
+    file.close();
+    return true;
+}

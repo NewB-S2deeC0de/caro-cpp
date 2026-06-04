@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <filesystem>
 
 static std::string HintStatePath_Main(int slotId)
 {
@@ -103,8 +104,11 @@ int main()
     bool  isPlayerTurn = true;
     float timeRemaining = 60.f;
     int   gameStatus = 0;
+
     bool  isRecording = false; 
     bool  hasSavedReplay = false; 
+    bool isReplaying = false; 
+    float replayTimer = 0.f;
 
     bool  ruleBlock2 = true;
     int   aiLevel = 3;
@@ -172,6 +176,34 @@ int main()
             // ── XỬ LÝ GÕ PHÍM (Bấm Enter chuyển bước) ─────────
             if (event.type == sf::Event::KeyPressed)
             {
+                if (event.key.code == sf::Keyboard::R && currentState == AppState::MENU_SCREEN) {
+                    std::string latestRep = "";
+                    std::filesystem::file_time_type latestTime;
+
+                    // Quét thư mục hiện tại để tìm file .rep mới nhất
+                    for (const auto& entry : std::filesystem::directory_iterator(".")) {
+                        if (entry.path().extension() == ".rep") {
+                            if (latestRep.empty() || std::filesystem::last_write_time(entry) > latestTime) {
+                                latestTime = std::filesystem::last_write_time(entry);
+                                latestRep = entry.path().string();
+                            }
+                        }
+                    }
+
+                    if (!latestRep.empty() && LoadGameReplay(latestRep.c_str())) {
+                        isReplaying = true;
+                        replayTimer = 5.0f; // Ép bằng 5 để đánh ngay nước đầu tiên không cần chờ
+                        currentState = AppState::IN_GAME_SCREEN;
+
+                        // Set tạm tên nhân vật cho giao diện
+                        p1Char = 0; p2Char = 1;
+                        p1Name = "REPLAY"; p2Name = "VIEWER";
+                        selectionStep = 4;
+                    }
+                    else {
+                        errSound.play(); // Báo lỗi nếu không có file Replay nào
+                    }
+                }
                 if (event.key.code == sf::Keyboard::Enter && currentState == AppState::CHAR_SELECT) {
                     if (selectionStep == 0 && p1Char != -1) {
                         selectionStep = 1;
@@ -504,17 +536,18 @@ int main()
                     }
                     else if (currentState == AppState::IN_GAME_SCREEN)
                     {
-                        HandleInGameInput(
-                            event.mouseButton.x, event.mouseButton.y,
-                            currentState, boardSize, gameMode,
-                            isPlayerTurn, gameStatus, timeRemaining, undoLeft,
-                            lastUndoPlayer, saveNotifTimer, errSound,
-                            currentLoadedSlot, currentLoadedName,
-                            ruleBlock2, aiLevel,
-                            hintX, hintY, hintLeft,
-                            isConfirmMainMenu, isRecording
-                        );
-                        
+                        if (!isReplaying) {
+                            HandleInGameInput(
+                                event.mouseButton.x, event.mouseButton.y,
+                                currentState, boardSize, gameMode,
+                                isPlayerTurn, gameStatus, timeRemaining, undoLeft,
+                                lastUndoPlayer, saveNotifTimer, errSound,
+                                currentLoadedSlot, currentLoadedName,
+                                ruleBlock2, aiLevel,
+                                hintX, hintY, hintLeft,
+                                isConfirmMainMenu, isRecording
+                            );
+                        }                 
                     }
                     else if (currentState == AppState::SETTINGS_SCREEN)
                     {
@@ -551,7 +584,7 @@ int main()
                     continue;
                 }
 
-                if (isPaused)
+                if (isPaused || isReplaying)
                 {
                     continue;
                 }
@@ -651,6 +684,15 @@ int main()
         {
             UpdateAI();
         }
+        if (isReplaying && !isPaused && !isConfirmMainMenu) {
+            replayTimer += dt;
+            if (replayTimer >= 5.0f) {
+                replayTimer = 0.f;
+                if (ProcessNextReplayMove()) {
+                    gameStatus = EvaluateBoard(); 
+                }
+            }
+        }
         if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0 && !isConfirmMainMenu && !isConfirmNewGame && !isPaused)
         {
             timeRemaining -= dt;
@@ -731,6 +773,7 @@ int main()
         }
         else if (currentState == AppState::IN_GAME_SCREEN)
         {
+
             window.draw(menuBgSprite);
             DrawBoard(window, boardSize);
             DrawPieces(window, boardSize);
@@ -772,11 +815,13 @@ int main()
             if (isConfirmMainMenu)
             {
                 DrawConfirmMainMenuOverlay(window, font);
+                isReplaying = false; 
             }
 
             if (isConfirmNewGame)
             {
                 DrawConfirmNewGameOverlay(window, font);
+                isReplaying = false; 
             }
         }
         else if (currentState == AppState::ABOUT_SCREEN)

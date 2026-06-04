@@ -70,4 +70,6 @@ extern "C" {
     CARO_API int  EvaluateBoard();
 
     CARO_API bool SaveGameReplay(const std::string& filename);
+    CARO_API bool LoadGameReplay(const char* filename);
+    CARO_API bool ProcessNextReplayMove();
 }

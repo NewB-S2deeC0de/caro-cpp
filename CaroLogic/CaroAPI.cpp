@@ -611,3 +611,33 @@ extern "C" CARO_API bool SaveGameReplay(const std::string& filename)
 {
     return SaveReplayBinary(filename);
 }
+
+static MoveRecord g_replayHistory[900];
+static int g_replayTotalMoves = 0;
+static int g_replayCurrentMove = 0;
+
+extern "C" CARO_API bool LoadGameReplay(const char* filename) {
+    ReplayMetadata meta;
+    if (LoadReplayBinary(std::string(filename), &meta, g_replayHistory)) {
+        // Dọn dẹp bàn cờ và thiết lập luật chơi y hệt lúc ghi hình
+        InitGame(meta.boardSize, meta.ruleBlock2, meta.aiLevel);
+        SetVirusMode(meta.virusMode);
+
+        g_replayTotalMoves = meta.historyCount;
+        g_replayCurrentMove = 0;
+        return true;
+    }
+    return false;
+}
+
+extern "C" CARO_API bool ProcessNextReplayMove() {
+    if (g_replayCurrentMove < g_replayTotalMoves) {
+        MoveRecord m = g_replayHistory[g_replayCurrentMove];
+
+        ProcessMove(m.x, m.y, m.player);
+
+        g_replayCurrentMove++;
+        return true;
+    }
+    return false; 
+}

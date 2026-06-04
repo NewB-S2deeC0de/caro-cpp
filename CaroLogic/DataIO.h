@@ -51,3 +51,4 @@ struct ReplayMetadata {
 };
 
 bool SaveReplayBinary(const std::string& filename);
+bool LoadReplayBinary(const std::string& filename, ReplayMetadata* outMeta, MoveRecord* outHistory);
