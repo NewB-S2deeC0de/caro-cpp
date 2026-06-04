@@ -36,21 +36,34 @@ extern "C" {
     CARO_API void StartAIThinking();
     CARO_API bool IsAIThinking();
     CARO_API int  GetAIResult(int* outX, int* outY);
-    CARO_API void UpdateAI(); 
+    CARO_API void UpdateAI();
 
-    // 5. File I/O
-// 
-// 
-// old
-//CARO_API bool SaveGameBinary(const char* filepath, float timeLeft, int isPlayerTurn);
-//CARO_API bool LoadGameBinary(const char* filepath, float* timeLeft, int* isPlayerTurn);
-//
-//
     // Multi-slot IO
     CARO_API bool SaveGameSlot(int slotId, float timeLeft, int isPlayerTurn, const char* gameName);
     CARO_API bool LoadGameSlot(int slotId, float* timeLeft, int* isPlayerTurn);
     CARO_API bool PeekGameSlot(int slotId, int* outBoardSize, int* outMoves, int* outTurn, char* outName);
     CARO_API bool DeleteGameSlot(int slotId);
     CARO_API bool GetSlotPreview(int slotId, int* outBoardSize, int* outMoves, int* outTurn, char* outDate, char* outName, int outBoard[30][30]);
+
+    // Save info
+    // mode: 1 = PVE, 2 = PVP
+    CARO_API void SetSaveGameMode(int mode);
+    CARO_API int  GetSavedGameMode();
+    CARO_API int  GetSlotGameMode(int slotId);
+    // 0 = NORMAL, 1 = VIRUS MODE
+    CARO_API int  GetSlotVirusMode(int slotId);
+
+
+    // Hint: goi y nuoc di tot cho player hien tai (1 = X, 2 = O)
+    CARO_API bool GetHintMove(int player, int* outX, int* outY);
+
+    // Virus Mode
+    CARO_API void SetVirusMode(bool enabled);
+    CARO_API bool IsVirusMode();
+    CARO_API int  GetVirusCell(int x, int y);       // 0 = khong co virus, 1/2/3 = muc gay hai cua dot nhiem
+    CARO_API void GetVirusInfo(bool* outEnabled, int* outActiveCount, int* outMoveCounter);
+    CARO_API int  GetVirusThreatLevel();          // 1/2/3: moi dot nhiem bao nhieu o
+    CARO_API int  GetVirusMaxCells();             // gioi han so o virus theo threat level
+
     CARO_API int  EvaluateBoard();
 }
