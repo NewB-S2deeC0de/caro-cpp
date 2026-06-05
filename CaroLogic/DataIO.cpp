@@ -18,6 +18,8 @@ extern int g_virusMoveCounter;
 extern int g_virusTTL[30][30];
 extern int g_savedGameMode;
 
+extern unsigned int g_virusSeed; 
+
 static void ClearVirusStateIO()
 {
     g_virusMode = false;
@@ -236,6 +238,7 @@ bool SaveReplayBinary(const std::string& filename) {
     meta.ruleBlock2 = g_ruleBlock2;
     meta.aiLevel = g_aiLevel;
     meta.virusMode = g_virusMode;
+    meta.virusSeed = g_virusSeed; 
     meta.historyCount = g_historyCount;
 
     std::time_t t = std::time(nullptr);

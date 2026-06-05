@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <random>
 
 // ============================================================
 //  TRẠNG THÁI BÀN CỜ
@@ -37,6 +38,9 @@ int        g_historyCount = 0;
 bool g_virusMode = false;
 int  g_virusMoveCounter = 0;
 int  g_virusTTL[30][30] = { 0 };
+
+unsigned int g_virusSeed = 0; 
+std::mt19937 g_virusRng; 
 
 // Helper nội bộ: đẩy 1 nước vào stack
 static void PushHistory(int x, int y, int player)
@@ -112,7 +116,7 @@ static bool FindRandomEmptyCell(int& outX, int& outY)
 
     if (emptyCount <= 0) return false;
 
-    int pick = std::rand() % emptyCount;
+    int pick = g_virusRng() % emptyCount;
     for (int i = 0; i < g_boardSize; ++i)
     {
         for (int j = 0; j < g_boardSize; ++j)
@@ -141,8 +145,8 @@ static void SpawnVirusWave()
     int active = CountVirusCells();
     if (active >= maxCells) return;
 
-    static bool seeded = false;
-    if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
+    //static bool seeded = false;
+    //if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
 
     int centerX = -1;
     int centerY = -1;
@@ -168,7 +172,7 @@ static void SpawnVirusWave()
 
         for (int tries = 0; tries < 16 && !placed; ++tries)
         {
-            int k = std::rand() % 8;
+            int k = g_virusRng() % 8;
             if (used[k]) continue;
             used[k] = true;
 
@@ -241,6 +245,9 @@ extern "C" CARO_API void InitGame(int size, bool ruleBlock2, int level)
     g_historyCount = 0;
     g_winStartX = g_winStartY = g_winEndX = g_winEndY = -1;
     ClearVirusCells();
+
+    g_virusSeed = static_cast<unsigned int>(std::time(nullptr));
+    g_virusRng.seed(g_virusSeed);
 }
 
 // ============================================================
@@ -625,6 +632,9 @@ extern "C" CARO_API bool LoadGameReplay(const char* filename) {
 
         g_replayTotalMoves = meta.historyCount;
         g_replayCurrentMove = 0;
+        
+        g_virusSeed = meta.virusSeed; 
+        g_virusRng.seed(g_virusSeed);
         return true;
     }
     return false;

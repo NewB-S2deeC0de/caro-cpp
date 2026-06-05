@@ -47,6 +47,7 @@ struct ReplayMetadata {
     int aiLevel;
     bool virusMode;
     int historyCount;    
+    unsigned int virusSeed; 
     char replayDate[32]; 
 };
 
