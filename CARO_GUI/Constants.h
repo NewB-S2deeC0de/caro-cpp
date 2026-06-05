@@ -10,6 +10,7 @@ enum class AppState {
     CHAR_SELECT,      // <--- THÊM ĐÚNG CHỮ NÀY VÀO DÁNH SÁCH
     LOAD_SCREEN,
     SAVE_SCREEN,
+    LOAD_REPLAY_SCREEN,
     SETTINGS_SCREEN,
     IN_GAME_SCREEN, 
     ABOUT_SCREEN

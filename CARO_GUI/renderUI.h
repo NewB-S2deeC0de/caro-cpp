@@ -43,3 +43,5 @@ void DrawConfirmMainMenuOverlay(sf::RenderWindow& window, const sf::Font& font);
 void DrawConfirmNewGameOverlay(sf::RenderWindow& window, const sf::Font& font);
 
 void DrawPauseOverlay(sf::RenderWindow& window, const sf::Font& font);
+
+void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font);

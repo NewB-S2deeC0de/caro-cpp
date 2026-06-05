@@ -176,34 +176,6 @@ int main()
             // ── XỬ LÝ GÕ PHÍM (Bấm Enter chuyển bước) ─────────
             if (event.type == sf::Event::KeyPressed)
             {
-                if (event.key.code == sf::Keyboard::R && currentState == AppState::MENU_SCREEN) {
-                    std::string latestRep = "";
-                    std::filesystem::file_time_type latestTime;
-
-                    // Quét thư mục hiện tại để tìm file .rep mới nhất
-                    for (const auto& entry : std::filesystem::directory_iterator(".")) {
-                        if (entry.path().extension() == ".rep") {
-                            if (latestRep.empty() || std::filesystem::last_write_time(entry) > latestTime) {
-                                latestTime = std::filesystem::last_write_time(entry);
-                                latestRep = entry.path().string();
-                            }
-                        }
-                    }
-
-                    if (!latestRep.empty() && LoadGameReplay(latestRep.c_str())) {
-                        isReplaying = true;
-                        replayTimer = 5.0f; // Ép bằng 5 để đánh ngay nước đầu tiên không cần chờ
-                        currentState = AppState::IN_GAME_SCREEN;
-
-                        // Set tạm tên nhân vật cho giao diện
-                        p1Char = 0; p2Char = 1;
-                        p1Name = "REPLAY"; p2Name = "VIEWER";
-                        selectionStep = 4;
-                    }
-                    else {
-                        errSound.play(); // Báo lỗi nếu không có file Replay nào
-                    }
-                }
                 if (event.key.code == sf::Keyboard::Enter && currentState == AppState::CHAR_SELECT) {
                     if (selectionStep == 0 && p1Char != -1) {
                         selectionStep = 1;
@@ -530,6 +502,24 @@ int main()
                             virusMode = IsVirusMode();
                         }
                     }
+                    else if (currentState == AppState::LOAD_REPLAY_SCREEN)
+                    {
+                        HandleLoadReplayInput(window, mx, my, currentState, isReplaying, replayTimer, errSound, p1Char, p2Char, p1Name, p2Name);
+                        
+                        if (currentState == AppState::IN_GAME_SCREEN)
+                        {
+                            selectionStep = 4;
+
+                            gameStatus = 0;           
+                            timeRemaining = 60.f;     
+                            isPlayerTurn = true;      
+                            
+                            winX1 = -1;
+                            winY1 = -1;
+                            winX2 = -1;
+                            winY2 = -1;
+                        }
+                    }
                     else if (currentState == AppState::SAVE_SCREEN)
                     {
                         HandleSaveInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, saveNotifTimer, errSound, isNaming, selectedSlotToSave, currentInputName, currentLoadedSlot, currentLoadedName, gameMode, isConfirmOverwrite, slotToOverwrite, hintLeft);
@@ -693,7 +683,7 @@ int main()
                 }
             }
         }
-        if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0 && !isConfirmMainMenu && !isConfirmNewGame && !isPaused)
+        if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0 && !isConfirmMainMenu && !isConfirmNewGame && !isPaused && !isReplaying)
         {
             timeRemaining -= dt;
             if (timeRemaining <= 0.f)
@@ -762,6 +752,10 @@ int main()
         else if (currentState == AppState::LOAD_SCREEN)
         {
             DrawLoadScreen(window, font);
+        }
+        else if (currentState == AppState::LOAD_REPLAY_SCREEN)
+        {
+            DrawLoadReplayScreen(window, font);
         }
         else if (currentState == AppState::SAVE_SCREEN)
         {

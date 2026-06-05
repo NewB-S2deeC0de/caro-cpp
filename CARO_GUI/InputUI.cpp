@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <cstdio>
+#include <filesystem>
 
 extern int gLoadPreviewSlotUI;
 
@@ -115,9 +116,13 @@ void HandleMenuInput(
             }
             else if (i == 4) // Chuyển sang màn hình About[cite: 2]
             {
+                currentState = AppState::LOAD_REPLAY_SCREEN;
+            }
+            else if (i == 5) // Chuyển sang màn hình About[cite: 2]
+            {
                 currentState = AppState::ABOUT_SCREEN;
             }
-            else if (i == 5) // Nút thoát được đẩy xuống cuối[cite: 2]
+            else if (i == 6) // Nút thoát được đẩy xuống cuối[cite: 2]
             {
                 window.close();
             }
@@ -602,3 +607,45 @@ void HandleSaveInput(
     }
 }
 
+void HandleLoadReplayInput(
+    sf::RenderWindow& window, int mouseX, int mouseY, AppState& currentState,
+    bool& isReplaying, float& replayTimer, sf::Sound& errSound,
+    int& p1Char, int& p2Char, std::string& p1Name, std::string& p2Name)
+{
+    float W = static_cast<float>(Config::WIN_WIDTH);
+    float pW = 900.f, pH = 520.f;
+    float pX = W / 2.f - pW / 2.f, pY = 150.f;
+
+    std::vector<std::string> files;
+    for (const auto& entry : std::filesystem::directory_iterator(".")) {
+        if (entry.path().extension() == ".rep") files.push_back(entry.path().filename().string());
+    }
+    std::sort(files.begin(), files.end(), std::greater<std::string>());
+
+    // Kiểm tra click vào Slots
+    float startY = pY + 80.f;
+    for (int i = 0; i < 5; ++i) {
+        float slotY = startY + i * 70.f;
+        if (mouseX >= pX + 50.f && mouseX <= pX + pW - 50.f && mouseY >= slotY && mouseY <= slotY + 55.f) {
+            if (i < files.size()) {
+                if (LoadGameReplay(files[i].c_str())) {
+                    isReplaying = true;
+                    replayTimer = 5.0f; // Kích hoạt ngay nước đầu tiên
+                    currentState = AppState::IN_GAME_SCREEN;
+
+                    // Thiết lập giao diện cho chế độ xem Replay
+                    p1Char = 0; p2Char = 1;
+                    p1Name = "REPLAY"; p2Name = "VIEWER";
+                }
+                else errSound.play();
+            }
+            else errSound.play();
+            return;
+        }
+    }
+
+    // Kiểm tra click nút RETURN
+    if (mouseX >= W / 2.f - 150.f && mouseX <= W / 2.f + 150.f && mouseY >= pY + pH + 20.f && mouseY <= pY + pH + 80.f) {
+        currentState = AppState::MENU_SCREEN;
+    }
+}

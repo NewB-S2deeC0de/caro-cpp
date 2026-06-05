@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <vector>
 #include <cstdlib>
+#include <filesystem>
 
 namespace Cyber {
     const sf::Color Cyan{ 0,  255, 255, 255 };
@@ -306,18 +307,20 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
 
     // ── 4. Vẽ các nút bấm menu ──────────────────────────────────
     const char* menuItems[] = {
-        "PVP - 2 Players",
-        "PVE - vs AI",
-        "Settings",
-        "Load Game",
-        "About",
-        "Exit"
+        "PLAYER VS PLAYER",
+        "PLAYER VS AI",
+        "SETTINGS",
+        "LOAD GAME",
+        "LOAD REPLAY",
+        "ABOUT",
+        "EXIT"
     };
 
     const sf::Color btnBorder[] = {
         Cyber::Cyan,
         Cyber::Magenta,
         Cyber::Yellow,
+        Cyber::NeonRed,
         sf::Color(80, 200, 255),
         sf::Color(50, 255, 150),
         sf::Color(255, 60, 80)
@@ -330,7 +333,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
     sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 7; ++i)
     {
         float bX = W / 2.f - BTN_W / 2.f;
         float bY = START_Y + i * STEP_Y;
@@ -3478,4 +3481,38 @@ void DrawPauseOverlay(sf::RenderWindow& window, const sf::Font& font)
             startX + btnW / 2.f,
             y + btnH / 2.f);
     }
+}
+
+void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font) {
+    float W = static_cast<float>(Config::WIN_WIDTH);
+    float pW = 900.f, pH = 520.f;
+    float pX = W / 2.f - pW / 2.f, pY = 150.f;
+
+    DrawNeonRect(window, pX, pY, pW, pH, sf::Color(10, 15, 25, 220), Cyber::Cyan, 2.f);
+    DrawCentredText(window, font, "SELECT REPLAY DATA", 35, Cyber::Cyan, W / 2.f, pY + 30.f);
+
+    std::vector<std::string> files;
+    for (const auto& entry : std::filesystem::directory_iterator(".")) {
+        if (entry.path().extension() == ".rep") {
+            files.push_back(entry.path().filename().string());
+        }
+    }
+    std::sort(files.begin(), files.end(), std::greater<std::string>());
+
+    float startY = pY + 80.f;
+    for (int i = 0; i < 5; ++i) {
+        float slotY = startY + i * 70.f;
+        DrawNeonRect(window, pX + 50.f, slotY, pW - 100.f, 55.f, sf::Color(20, 20, 30, 200), Cyber::CyanDim, 1.f);
+
+        if (i < files.size()) {
+            DrawCentredText(window, font, files[i], 22, Cyber::White, W / 2.f, slotY + 27.f);
+        }
+        else {
+            DrawCentredText(window, font, "--- EMPTY SLOT ---", 22, sf::Color(100, 100, 100), W / 2.f, slotY + 27.f);
+        }
+    }
+
+    float btnX = W / 2.f - 150.f, btnY = pY + pH + 20.f;
+    Draw3DSciFiButton(window, btnX, btnY, 300.f, 60.f, Cyber::BgBtn, Cyber::NeonRed, 1.2f, false, Cyber::NeonRed);
+    DrawCentredText(window, font, "RETURN", 24, Cyber::White, W / 2.f, btnY + 30.f);
 }

@@ -67,3 +67,10 @@ void HandleSaveInput(
     bool& isConfirmOverwrite,
     int& slotToOverwrite,
     int hintLeft[2]);
+
+void HandleLoadReplayInput(
+    sf::RenderWindow& window, int mouseX,
+    int mouseY, AppState& currentState,
+    bool& isReplaying, float& replayTimer,
+    sf::Sound& errSound, int& p1Char, int& p2Char,
+    std::string& p1Name, std::string& p2Name);
