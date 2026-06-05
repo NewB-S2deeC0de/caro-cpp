@@ -267,3 +267,14 @@ bool LoadReplayBinary(const std::string& filename, ReplayMetadata* outMeta, Move
     file.close();
     return true;
 }
+
+bool PeekReplayMetadata(const std::string& filename, ReplayMetadata* outMeta) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open())
+    {
+        return false;
+    }
+    file.read(reinterpret_cast<char*>(outMeta), sizeof(ReplayMetadata));
+    file.close();
+    return (std::strcmp(outMeta->magic, "CAROREP") == 0);
+}

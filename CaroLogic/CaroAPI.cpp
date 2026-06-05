@@ -641,3 +641,15 @@ extern "C" CARO_API bool ProcessNextReplayMove() {
     }
     return false; 
 }
+
+extern "C" CARO_API bool PeekReplayFile(const char* filename, int* outBoardSize, int* outMoves, bool* outVirusMode, char* outDate) {
+    ReplayMetadata meta;
+    if (PeekReplayMetadata(std::string(filename), &meta)) {
+        *outBoardSize = meta.boardSize;
+        *outMoves = meta.historyCount;
+        *outVirusMode = meta.virusMode;
+        strcpy_s(outDate, 32, meta.replayDate);
+        return true;
+    }
+    return false;
+}

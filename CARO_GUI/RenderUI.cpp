@@ -34,6 +34,7 @@ namespace Cyber {
 }
 
 int gLoadPreviewSlotUI = 1;
+int gReplayPreviewSlotUI = 0; 
 
 static std::string SaveModeLabel(int virusMode)
 {
@@ -3484,35 +3485,120 @@ void DrawPauseOverlay(sf::RenderWindow& window, const sf::Font& font)
 }
 
 void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font) {
+    static sf::Clock loadAnimClock;
+    float animT = loadAnimClock.getElapsedTime().asSeconds();
     float W = static_cast<float>(Config::WIN_WIDTH);
-    float pW = 900.f, pH = 520.f;
-    float pX = W / 2.f - pW / 2.f, pY = 150.f;
+    float H = static_cast<float>(Config::WIN_HEIGHT);
 
-    DrawNeonRect(window, pX, pY, pW, pH, sf::Color(10, 15, 25, 220), Cyber::Cyan, 2.f);
-    DrawCentredText(window, font, "SELECT REPLAY DATA", 35, Cyber::Cyan, W / 2.f, pY + 30.f);
+    // Hieu ung nen
+    sf::RectangleShape bg({ W, H });
+    bg.setFillColor(sf::Color(8, 10, 18));
+    window.draw(bg);
+    for (float x = 0.f; x < W; x += 64.f) {
+        sf::RectangleShape line({ 1.f, H });
+        line.setPosition(x, 0.f); line.setFillColor(sf::Color(0, 255, 255, 5)); window.draw(line);
+    }
+    for (float y = 0.f; y < H; y += 48.f) {
+        sf::RectangleShape line({ W, 1.f });
+        line.setPosition(0.f, y); line.setFillColor(sf::Color(255, 0, 200, 4)); window.draw(line);
+    }
+    float titlePulse = (std::sin(animT * 2.2f) + 1.f) * 0.5f;
+    DrawCentredText(window, font, "REPLAY ARCHIVE", 46, sf::Color(255, 220, 0, static_cast<sf::Uint8>(200 + titlePulse * 55)), W / 2.f, 92.f);
 
+    // Kich thuoc panel chinh
+    const float panelW = 980.f;
+    const float panelH = 520.f;
+    const float panelX = W / 2.f - panelW / 2.f;
+    const float panelY = 150.f;
+
+    DrawNeonRect(window, panelX, panelY, panelW, panelH, sf::Color(6, 10, 18, 225), sf::Color(0, 255, 255, static_cast<sf::Uint8>(90 + titlePulse * 45)), 1.5f);
+    DrawCornerBrackets(window, panelX - 8.f, panelY - 8.f, panelW + 16.f, panelH + 16.f, sf::Color(0, 255, 255, static_cast<sf::Uint8>(190 + titlePulse * 65)), 38.f, 3.f);
+
+    DrawSectionHeader(window, font, "[ ARCHIVED MATCHES ]", panelX + 28.f, panelY + 26.f, 390.f, Cyber::Cyan);
+    DrawSectionHeader(window, font, "[ REPLAY DETAILS ]", panelX + 455.f, panelY + 26.f, 475.f, Cyber::Magenta);
+
+    // Lay danh sach file replay
     std::vector<std::string> files;
     for (const auto& entry : std::filesystem::directory_iterator(".")) {
-        if (entry.path().extension() == ".rep") {
-            files.push_back(entry.path().filename().string());
-        }
+        if (entry.path().extension() == ".rep") files.push_back(entry.path().filename().string());
     }
     std::sort(files.begin(), files.end(), std::greater<std::string>());
 
-    float startY = pY + 80.f;
-    for (int i = 0; i < 5; ++i) {
-        float slotY = startY + i * 70.f;
-        DrawNeonRect(window, pX + 50.f, slotY, pW - 100.f, 55.f, sf::Color(20, 20, 30, 200), Cyber::CyanDim, 1.f);
+    sf::Vector2f mp = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
-        if (i < files.size()) {
-            DrawCentredText(window, font, files[i], 22, Cyber::White, W / 2.f, slotY + 27.f);
+    // Ve 5 slot ben trai + Xu ly hover
+    const float slotX = panelX + 28.f;
+    const float slotY = panelY + 58.f;
+    const float slotW = 390.f;
+    const float slotH = 72.f;
+    const float gap = 18.f;
+
+    int hoveredSlot = -1;
+    for (int i = 0; i < 5; ++i) {
+        float y = slotY + i * (slotH + gap);
+        if (mp.x >= slotX && mp.x <= slotX + slotW && mp.y >= y && mp.y <= y + slotH) {
+            hoveredSlot = i;
+        }
+    }
+    if (hoveredSlot != -1) gReplayPreviewSlotUI = hoveredSlot;
+
+    for (int i = 0; i < 5; ++i) {
+        float y = slotY + i * (slotH + gap);
+        bool hasData = (i < files.size());
+        bool isHovered = (gReplayPreviewSlotUI == i);
+
+        DrawNeonRect(window, slotX, y, slotW, slotH,
+            isHovered ? sf::Color(20, 30, 40, 220) : sf::Color(10, 15, 20, 200),
+            hasData ? (isHovered ? Cyber::Cyan : Cyber::CyanDim) : sf::Color(50, 70, 90),
+            isHovered ? 2.f : 1.f);
+
+        if (hasData) {
+            DrawCentredText(window, font, files[i], 22, isHovered ? Cyber::White : sf::Color(200, 220, 255), slotX + slotW / 2.f, y + slotH / 2.f);
         }
         else {
-            DrawCentredText(window, font, "--- EMPTY SLOT ---", 22, sf::Color(100, 100, 100), W / 2.f, slotY + 27.f);
+            DrawCentredText(window, font, "--- EMPTY SLOT ---", 20, sf::Color(80, 90, 100), slotX + slotW / 2.f, y + slotH / 2.f);
         }
     }
 
-    float btnX = W / 2.f - 150.f, btnY = pY + pH + 20.f;
-    Draw3DSciFiButton(window, btnX, btnY, 300.f, 60.f, Cyber::BgBtn, Cyber::NeonRed, 1.2f, false, Cyber::NeonRed);
-    DrawCentredText(window, font, "RETURN", 24, Cyber::White, W / 2.f, btnY + 30.f);
+    // Preview panel ben phai
+    const float prevX = panelX + 455.f;
+    const float prevY = panelY + 58.f;
+    const float prevW = 490.f;
+    const float prevH = 420.f;
+    DrawNeonRect(window, prevX, prevY, prevW, prevH, sf::Color(8, 12, 16, 200), Cyber::Magenta, 1.5f);
+
+    if (gReplayPreviewSlotUI >= 0 && gReplayPreviewSlotUI < files.size())
+    {
+        std::string selFile = files[gReplayPreviewSlotUI];
+
+        // Delete button
+        const float delW = 34.f, delH = 24.f;
+        const float delX = prevX + prevW - delW - 10.f;
+        const float delY = prevY + 10.f;
+        bool hovDel = (mp.x >= delX && mp.x <= delX + delW && mp.y >= delY && mp.y <= delY + delH);
+
+        sf::RectangleShape delBtn({ delW, delH });
+        delBtn.setPosition(delX, delY);
+        delBtn.setFillColor(hovDel ? sf::Color(200, 40, 40) : sf::Color(80, 20, 20));
+        window.draw(delBtn);
+        DrawCentredText(window, font, "X", 16, Cyber::White, delX + delW / 2.f, delY + delH / 2.f - 2.f);
+
+        int bSize = 0, moves = 0;
+        bool vMode = false;
+        char repDate[32] = "";
+
+        if (PeekReplayFile(selFile.c_str(), &bSize, &moves, &vMode, repDate)) {
+            DrawCentredText(window, font, selFile, 28, Cyber::Yellow, prevX + prevW / 2.f, prevY + 60.f);
+
+            float infoY = prevY + 120.f;
+            float stepY = 40.f;
+            DrawCentredText(window, font, "DATE: " + std::string(repDate), 20, Cyber::White, prevX + prevW / 2.f, infoY);
+            DrawCentredText(window, font, "BOARD: " + std::to_string(bSize) + "x" + std::to_string(bSize), 20, Cyber::White, prevX + prevW / 2.f, infoY + stepY);
+            DrawCentredText(window, font, "TOTAL MOVES: " + std::to_string(moves), 20, Cyber::White, prevX + prevW / 2.f, infoY + stepY * 2);
+            DrawCentredText(window, font, "VIRUS MODE: " + std::string(vMode ? "ON" : "OFF"), 20, vMode ? Cyber::NeonRed : Cyber::Cyan, prevX + prevW / 2.f, infoY + stepY * 3);
+        }
+        else {
+            DrawCentredText(window, font, "[ CORRUPTED DATA ]", 24, Cyber::NeonRed, prevX + prevW / 2.f, prevY + prevH / 2.f);
+        }
+    }
 }

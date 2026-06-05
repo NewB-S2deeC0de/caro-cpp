@@ -6,6 +6,7 @@
 #include <filesystem>
 
 extern int gLoadPreviewSlotUI;
+extern int gReplayPreviewSlotUI;
 
 // ============================================================
 //  Helper nội bộ
@@ -613,39 +614,85 @@ void HandleLoadReplayInput(
     int& p1Char, int& p2Char, std::string& p1Name, std::string& p2Name)
 {
     float W = static_cast<float>(Config::WIN_WIDTH);
-    float pW = 900.f, pH = 520.f;
-    float pX = W / 2.f - pW / 2.f, pY = 150.f;
+    const float pW = 900.f, pH = 520.f;
+    const float pX = W / 2.f - pW / 2.f;
+    const float pY = 150.f;
 
     std::vector<std::string> files;
-    for (const auto& entry : std::filesystem::directory_iterator(".")) {
-        if (entry.path().extension() == ".rep") files.push_back(entry.path().filename().string());
+    for (const auto& entry : std::filesystem::directory_iterator(".")) 
+    {
+        if (entry.path().extension() == ".rep")
+        {
+            files.push_back(entry.path().filename().string());
+        }
     }
     std::sort(files.begin(), files.end(), std::greater<std::string>());
 
+    if (gReplayPreviewSlotUI >= 0 && gReplayPreviewSlotUI < files.size())
+    {
+        const float prevX = pX + 455.f; 
+        const float prevY = pY + 58.f; 
+        const float prevW = 490.f; 
+        
+        const float delW = 34.f; 
+        const float delH = 24.f; 
+        const float delX = prevX + prevW - delW - 10.f; 
+        const float delY = prevY + 10.f; 
+
+        if (mouseX >= delX && mouseX <= delX + delW && mouseY >= delY && mouseY <= delY + delH)
+        {
+            if (std::filesystem::remove(files[gReplayPreviewSlotUI]))
+            {
+                errSound.play(); 
+                gReplayPreviewSlotUI = 0; 
+            }
+            return; 
+        }
+
+    }
+    const float slotX = pX + 28.f; 
+    const float slotY = pY + 58.f; 
+    const float slotW = 390.f; 
+    const float slotH = 72.f; 
+    const float gap = 18.f;
+    
+
     // Kiểm tra click vào Slots
-    float startY = pY + 80.f;
     for (int i = 0; i < 5; ++i) {
-        float slotY = startY + i * 70.f;
-        if (mouseX >= pX + 50.f && mouseX <= pX + pW - 50.f && mouseY >= slotY && mouseY <= slotY + 55.f) {
+        float y = slotY + i * (slotH + gap);
+        if (mouseX >= slotX + 50.f && mouseX <= slotX + slotW && mouseY >= y && mouseY <= y + slotH) 
+        {
+            gReplayPreviewSlotUI = i; 
+
             if (i < files.size()) {
-                if (LoadGameReplay(files[i].c_str())) {
+                if (LoadGameReplay(files[i].c_str())) 
+                {
                     isReplaying = true;
-                    replayTimer = 5.0f; // Kích hoạt ngay nước đầu tiên
+                    replayTimer = 5.0f; 
                     currentState = AppState::IN_GAME_SCREEN;
 
-                    // Thiết lập giao diện cho chế độ xem Replay
                     p1Char = 0; p2Char = 1;
                     p1Name = "REPLAY"; p2Name = "VIEWER";
                 }
-                else errSound.play();
+                else
+                {
+                    errSound.play();
+                }
             }
-            else errSound.play();
+            else
+            {
+                errSound.play();
+            }
             return;
         }
     }
 
-    // Kiểm tra click nút RETURN
-    if (mouseX >= W / 2.f - 150.f && mouseX <= W / 2.f + 150.f && mouseY >= pY + pH + 20.f && mouseY <= pY + pH + 80.f) {
+    const float BW = 300.f; 
+    const float BH = 60.f; 
+    float BX = W / 2.f - BW / 2.f; 
+    float BY = pY + 520.f + 32.f; 
+    if (mouseX >= BX && mouseX <= BX + BW && mouseY >= BY && mouseY <= BY + BH) 
+    {
         currentState = AppState::MENU_SCREEN;
     }
 }
