@@ -73,4 +73,6 @@ extern "C" {
     CARO_API bool LoadGameReplay(const char* filename);
     CARO_API bool ProcessNextReplayMove();
     CARO_API bool PeekReplayFile(const char* filename, int* outBoardSize, int* outMoves, bool* outVirusMode, char* outDate);
+    CARO_API bool GetReplayPreview(const char* filename, int* outBoardSize, int* outMoves, int* outVirusMode, char* outDate, int outBoard[30][30]);
+
 }

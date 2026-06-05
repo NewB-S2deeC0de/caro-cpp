@@ -252,6 +252,8 @@ bool SaveReplayBinary(const std::string& filename) {
         file.write(reinterpret_cast<const char*>(g_history), sizeof(MoveRecord) * g_historyCount);
     }
 
+    file.write(reinterpret_cast<const char*>(g_board), sizeof(int) * 30 * 30);
+
     file.close();
     return true;
 }

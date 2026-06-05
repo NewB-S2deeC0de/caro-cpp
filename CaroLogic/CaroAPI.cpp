@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
+#include <fstream>
 
 // ============================================================
 //  TRẠNG THÁI BÀN CỜ
@@ -662,4 +663,61 @@ extern "C" CARO_API bool PeekReplayFile(const char* filename, int* outBoardSize,
         return true;
     }
     return false;
+}
+
+extern "C" CARO_API bool GetReplayPreview
+(
+    const char* filename, int* outBoardSize,
+    int* outMoves, int* outVirusMode, char* outDate,
+    int outBoard[30][30]
+)
+{
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open())
+    {
+        return false; 
+    }
+
+    ReplayMetadata meta; 
+    file.read(reinterpret_cast<char*>(&meta), sizeof(ReplayMetadata)); 
+    if (std::strcmp(meta.magic, "CAROREP") != 0) 
+    {
+        return false;
+    }
+
+    *outBoardSize = meta.boardSize;
+    *outMoves = meta.historyCount;
+    *outVirusMode = meta.virusMode ? 1 : 0;
+    strcpy_s(outDate, 32, meta.replayDate);
+
+    if (meta.historyCount > 0) 
+    {
+        file.seekg(sizeof(MoveRecord) * meta.historyCount, std::ios::cur); 
+    }
+
+    if (file.read(reinterpret_cast<char*>(outBoard), sizeof(int) * 30 * 30))
+    {
+        file.close(); 
+        return true;
+    }
+
+    file.clear(); 
+    file.seekg(sizeof(ReplayMetadata), std::ios::beg); 
+    
+    for (int i = 0; i < 30; i++)
+    {
+        for (int j = 0; j < 30; j++)
+        {
+            outBoard[i][j] = 0;
+        }
+    }
+
+    for (int i = 0; i < meta.historyCount; i++) {
+        MoveRecord m; 
+        file.read(reinterpret_cast<char*>(&m), sizeof(MoveRecord)); 
+        outBoard[m.x][m.y] = m.player;
+    }
+
+    file.close();
+    return false; 
 }
