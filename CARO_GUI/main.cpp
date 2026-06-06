@@ -722,14 +722,7 @@ int main()
                 std::time_t t = std::time(nullptr);
                 std::string filename = "replay_" + std::to_string(t) + ".rep";
 
-                if (SaveGameReplay(filename))
-                {
-                    std::cout << "Da luu file Replay: " << filename << std::endl; 
-                }
-                else
-                {
-                    std::cout << "Loi: Khong the luu file Replay!" << std::endl;
-                }
+                SaveGameReplay(filename);
 
                 hasSavedReplay = true; 
             }

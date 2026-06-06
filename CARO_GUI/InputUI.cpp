@@ -614,7 +614,8 @@ void HandleLoadReplayInput(
     int& p1Char, int& p2Char, std::string& p1Name, std::string& p2Name)
 {
     float W = static_cast<float>(Config::WIN_WIDTH);
-    const float pW = 900.f, pH = 520.f;
+    const float pW = 980.f;
+    const float pH = 520.f;
     const float pX = W / 2.f - pW / 2.f;
     const float pY = 150.f;
 
@@ -628,7 +629,7 @@ void HandleLoadReplayInput(
     }
     std::sort(files.begin(), files.end(), std::greater<std::string>());
 
-    if (gReplayPreviewSlotUI >= 0 && gReplayPreviewSlotUI < files.size())
+    if (gReplayPreviewSlotUI >= 1 && gReplayPreviewSlotUI <= files.size())
     {
         const float prevX = pX + 455.f; 
         const float prevY = pY + 58.f; 
@@ -641,10 +642,22 @@ void HandleLoadReplayInput(
 
         if (mouseX >= delX && mouseX <= delX + delW && mouseY >= delY && mouseY <= delY + delH)
         {
-            if (std::filesystem::remove(files[gReplayPreviewSlotUI]))
+            //int idx = gReplayPreviewSlotUI - 1;
+            //if (idx < 0 || idx >= (int)files.size()) return;
+
+            std::string fileToDelete = files[gReplayPreviewSlotUI - 1];
+            
+            if (DeleteReplayFile(fileToDelete.c_str()))
             {
-                errSound.play(); 
-                gReplayPreviewSlotUI = 0; 
+                files.erase(files.begin() + (gReplayPreviewSlotUI - 1));
+                
+                if (files.empty()) {
+                    gReplayPreviewSlotUI = 1; 
+                }
+                else if (gReplayPreviewSlotUI > files.size())
+                {
+                    gReplayPreviewSlotUI = files.size();
+                }
             }
             return; 
         }

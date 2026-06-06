@@ -3574,8 +3574,10 @@ static void DrawReplayPreviewClean(sf::RenderWindow& window, const sf::Font& fon
     sf::Vector2f mp = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     bool delHover = (mp.x >= delX && mp.x <= delX + delW && mp.y >= delY && mp.y <= delY + delH);
     DrawNeonRect(window, delX, delY, delW, delH, delHover ? sf::Color(70, 18, 28, 235) : sf::Color(35, 14, 22, 215), delHover ? sf::Color(255, 95, 145, 230) : sf::Color(190, 70, 110, 180), 1.2f);
-    sf::Text delTxt("X", font, 14); delTxt.setStyle(sf::Text::Bold); delTxt.setFillColor(sf::Color(255, 180, 210));
-    sf::FloatRect dtr = delTxt.getLocalBounds(); delTxt.setOrigin(dtr.left + dtr.width / 2.f, dtr.top + dtr.height / 2.f); delTxt.setPosition(delX + delW / 2.f, delY + delH / 2.f - 1.f); window.draw(delTxt);
+    sf::Text delTxt("X", font, 14);
+    delTxt.setStyle(sf::Text::Bold); delTxt.setFillColor(sf::Color(255, 180, 210));
+    sf::FloatRect dtr = delTxt.getLocalBounds();
+    delTxt.setOrigin(dtr.left + dtr.width / 2.f, dtr.top + dtr.height / 2.f); delTxt.setPosition(delX + delW / 2.f, delY + delH / 2.f - 1.f); window.draw(delTxt);
 
     sf::Text head("REPLAY INFORMATION", font, 17); head.setStyle(sf::Text::Bold); head.setFillColor(Cyber::Yellow); head.setPosition(x + 20.f, y + 16.f); window.draw(head);
     sf::Text name(filename, font, 27); name.setStyle(sf::Text::Bold); name.setFillColor(sf::Color(220, 230, 255, 230 + static_cast<sf::Uint8>(pulse * 25))); name.setPosition(x + 20.f, y + 43.f); window.draw(name);
@@ -3698,9 +3700,26 @@ void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font)
         if (mp.x >= slotX && mp.x <= slotX + slotW && mp.y >= y && mp.y <= y + slotH) hoveredSlot = i;
     }
 
-    if (hoveredSlot != -1) gReplayPreviewSlotUI = hoveredSlot;
-    if (gReplayPreviewSlotUI < 1 || gReplayPreviewSlotUI > 5) gReplayPreviewSlotUI = 1;
-
+    if (hoveredSlot != -1)
+    {
+        if (hoveredSlot <= files.size())
+        {
+            gReplayPreviewSlotUI = hoveredSlot;
+        }
+    }
+    
+    if (files.empty()) {
+        gReplayPreviewSlotUI = 1; 
+    }
+    else {
+        if (gReplayPreviewSlotUI < 1) {
+            gReplayPreviewSlotUI = 1; 
+        }
+        if (gReplayPreviewSlotUI > files.size())
+        {
+            gReplayPreviewSlotUI = files.size();
+        }
+    }
     for (int i = 1; i <= 5; ++i) {
         float y = slotY + (i - 1) * (slotH + gap);
         bool hasData = (i - 1 < files.size());
