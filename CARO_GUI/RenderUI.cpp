@@ -329,7 +329,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
 
     const float BTN_W = 380.f;
     const float BTN_H = 62.f;
-    const float START_Y = 288.f;
+    const float START_Y = 226.f;
     const float STEP_Y = 82.f;
     sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));

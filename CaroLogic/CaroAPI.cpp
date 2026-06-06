@@ -9,9 +9,6 @@
 #include <ctime>
 #include <random>
 #include <fstream>
-#include <chrono>
-#include <sstream>
-#include <iomanip>
 
 // ============================================================
 //  TRẠNG THÁI BÀN CỜ

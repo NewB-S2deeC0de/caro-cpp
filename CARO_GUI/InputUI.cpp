@@ -82,13 +82,13 @@ void HandleMenuInput(
     sf::Sound& errSound, int& currentLoadedSlot,
     std::string& currentLoadedName)
 {
-    const float BTN_W = 350.f;
-    const float BTN_H = 60.f;
+    const float BTN_W = 380.f;
+    const float BTN_H = 62.f;
     const float BTN_X = Config::WIN_WIDTH / 2.f - BTN_W / 2.f;
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 7; ++i)
     {
-        float bY = 300.f + i * 80.f;
+        float bY = 226.f + i * 82.f;
 
         if (mouseX >= BTN_X && mouseX <= BTN_X + BTN_W &&
             mouseY >= bY && mouseY <= bY + BTN_H)
@@ -115,15 +115,15 @@ void HandleMenuInput(
             {
                 currentState = AppState::LOAD_SCREEN;
             }
-            else if (i == 4) // Chuyển sang màn hình About[cite: 2]
+            else if (i == 4) 
             {
                 currentState = AppState::LOAD_REPLAY_SCREEN;
             }
-            else if (i == 5) // Chuyển sang màn hình About[cite: 2]
+            else if (i == 5) 
             {
                 currentState = AppState::ABOUT_SCREEN;
             }
-            else if (i == 6) // Nút thoát được đẩy xuống cuối[cite: 2]
+            else if (i == 6) 
             {
                 window.close();
             }
