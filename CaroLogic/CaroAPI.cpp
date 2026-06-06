@@ -723,5 +723,5 @@ extern "C" CARO_API bool GetReplayPreview
 }
 
 extern "C" CARO_API bool DeleteReplayFile(const char* filename) {
-    return std::remove(filename) == 0;
+    return DeleteReplayBinary(std::string(filename));
 }

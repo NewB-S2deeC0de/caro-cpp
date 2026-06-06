@@ -283,3 +283,7 @@ bool PeekReplayMetadata(const std::string& filename, ReplayMetadata* outMeta) {
     file.close();
     return (std::strcmp(outMeta->magic, "CAROREP") == 0);
 }
+
+bool DeleteReplayBinary(const std::string& filename) {
+    return std::remove(filename.c_str()) == 0;
+}
