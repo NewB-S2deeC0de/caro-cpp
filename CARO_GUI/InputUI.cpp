@@ -186,7 +186,7 @@ void HandleInGameInput(
     }
 
     // =========================================================
-    // ── B. TỌA ĐỘ 3 NÚT BẤM (Ở BẢNG ĐIỀU KHIỂN DƯỚI BÀN CỜ) ──
+    // ── B. TỌA ĐỘ 4 NÚT BẤM (Ở BẢNG ĐIỀU KHIỂN DƯỚI BÀN CỜ) ──
     // =========================================================
     float boardCenterX = static_cast<float>(Config::WIN_WIDTH) / 2.f;
     float CARD_H = 340.f;
