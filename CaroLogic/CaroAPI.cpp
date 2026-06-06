@@ -627,7 +627,6 @@ static int g_replayCurrentMove = 0;
 extern "C" CARO_API bool LoadGameReplay(const char* filename) {
     ReplayMetadata meta;
     if (LoadReplayBinary(std::string(filename), &meta, g_replayHistory)) {
-        // Dọn dẹp bàn cờ và thiết lập luật chơi y hệt lúc ghi hình
         InitGame(meta.boardSize, meta.ruleBlock2, meta.aiLevel);
         SetVirusMode(meta.virusMode);
 

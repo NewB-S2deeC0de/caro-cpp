@@ -676,7 +676,7 @@ int main()
         }
         if (isReplaying && !isPaused && !isConfirmMainMenu) {
             replayTimer += dt;
-            if (replayTimer >= 5.0f) {
+            if (replayTimer >= 3.0f) {
                 replayTimer = 0.f;
                 if (ProcessNextReplayMove()) {
                     gameStatus = EvaluateBoard(); 
