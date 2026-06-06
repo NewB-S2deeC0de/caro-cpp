@@ -321,7 +321,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
         Cyber::Cyan,
         Cyber::Magenta,
         Cyber::Yellow,
-        Cyber::NeonRed,
+        sf::Color(80, 200, 255),
         sf::Color(80, 200, 255),
         sf::Color(50, 255, 150),
         sf::Color(255, 60, 80)
@@ -1104,7 +1104,7 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
         if (i == 3 && isRecording && !hov) 
         {
             float p = 0.5f + 0.5f * std::sin(st * 8.0f);
-            textCol = sf::Color(255, 150 + p * 100, 150 + p * 100);
+            textCol = sf::Color(255, static_cast<sf::Uint8>(150 + p * 100), static_cast<sf::Uint8>(150 + p * 100));
         }
         DrawCentredText(window, font, gameBtns[i], 20, textCol, bX + BTN_W / 2.f, btnsY + BTN_H / 2.f);
 
@@ -3692,6 +3692,7 @@ void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font)
         if (entry.path().extension() == ".rep") files.push_back(entry.path().filename().string());
     }
     std::sort(files.begin(), files.end(), std::greater<std::string>());
+    int remainingFiles = (int)files.size();
 
     const float slotX = panelX + 28.f, slotY = panelY + 58.f, slotW = 390.f, slotH = 72.f, gap = 18.f;
     int hoveredSlot = -1;
@@ -3702,7 +3703,7 @@ void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font)
 
     if (hoveredSlot != -1)
     {
-        if (hoveredSlot <= files.size())
+        if (hoveredSlot <= remainingFiles)
         {
             gReplayPreviewSlotUI = hoveredSlot;
         }
@@ -3715,9 +3716,9 @@ void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font)
         if (gReplayPreviewSlotUI < 1) {
             gReplayPreviewSlotUI = 1; 
         }
-        if (gReplayPreviewSlotUI > files.size())
+        if (gReplayPreviewSlotUI > remainingFiles)
         {
-            gReplayPreviewSlotUI = files.size();
+            gReplayPreviewSlotUI = remainingFiles;
         }
     }
     for (int i = 1; i <= 5; ++i) {
