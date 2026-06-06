@@ -629,7 +629,8 @@ void HandleLoadReplayInput(
     }
     std::sort(files.begin(), files.end(), std::greater<std::string>());
 
-    if (gReplayPreviewSlotUI >= 1 && gReplayPreviewSlotUI <= files.size())
+    int remainingFiles = (int)files.size();
+    if (gReplayPreviewSlotUI >= 1 && gReplayPreviewSlotUI <= remainingFiles)
     {
         const float prevX = pX + 455.f; 
         const float prevY = pY + 58.f; 
@@ -650,13 +651,14 @@ void HandleLoadReplayInput(
             if (DeleteReplayFile(fileToDelete.c_str()))
             {
                 files.erase(files.begin() + (gReplayPreviewSlotUI - 1));
+                remainingFiles--;
                 
                 if (files.empty()) {
                     gReplayPreviewSlotUI = 1; 
                 }
-                else if (gReplayPreviewSlotUI > files.size())
+                else if (gReplayPreviewSlotUI > remainingFiles)
                 {
-                    gReplayPreviewSlotUI = files.size();
+                    gReplayPreviewSlotUI = remainingFiles;
                 }
             }
             return; 
