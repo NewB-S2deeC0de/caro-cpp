@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <vector>
 #include <cstdlib>
+#include <filesystem>
 
 namespace Cyber {
     const sf::Color Cyan{ 0,  255, 255, 255 };
@@ -33,6 +34,7 @@ namespace Cyber {
 }
 
 int gLoadPreviewSlotUI = 1;
+int gReplayPreviewSlotUI = 0; 
 
 static std::string SaveModeLabel(int virusMode)
 {
@@ -306,18 +308,20 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
 
     // ── 4. Vẽ các nút bấm menu ──────────────────────────────────
     const char* menuItems[] = {
-        "PVP - 2 Players",
-        "PVE - vs AI",
-        "Settings",
-        "Load Game",
-        "About",
-        "Exit"
+        "PLAYER VS PLAYER",
+        "PLAYER VS AI",
+        "SETTINGS",
+        "LOAD GAME",
+        "LOAD REPLAY",
+        "ABOUT",
+        "EXIT"
     };
 
     const sf::Color btnBorder[] = {
         Cyber::Cyan,
         Cyber::Magenta,
         Cyber::Yellow,
+        Cyber::NeonRed,
         sf::Color(80, 200, 255),
         sf::Color(50, 255, 150),
         sf::Color(255, 60, 80)
@@ -325,12 +329,12 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
 
     const float BTN_W = 380.f;
     const float BTN_H = 62.f;
-    const float START_Y = 288.f;
+    const float START_Y = 226.f;
     const float STEP_Y = 82.f;
     sf::Vector2f worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     sf::Vector2i mp(static_cast<int>(worldPos.x), static_cast<int>(worldPos.y));
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 7; ++i)
     {
         float bX = W / 2.f - BTN_W / 2.f;
         float bY = START_Y + i * STEP_Y;
@@ -436,7 +440,7 @@ void DrawMenu(sf::RenderWindow& window, const sf::Font& font, sf::Sprite& bgSpri
     }
 }
 
-void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeRemaining, bool isPlayerTurn, int gameStatus, int boardSize, GameMode gameMode, int undoLeft[2], int hintLeft[2], float saveNotifTimer, int p1Char, int p2Char, const std::string& p1Name, const std::string& p2Name, sf::Sprite charSprites[4])
+void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeRemaining, bool isPlayerTurn, int gameStatus, int boardSize, GameMode gameMode, int undoLeft[2], int hintLeft[2], float saveNotifTimer, int p1Char, int p2Char, const std::string& p1Name, const std::string& p2Name, sf::Sprite charSprites[4], bool isRecording)
 {
     float W = static_cast<float>(Config::WIN_WIDTH);
     float H = static_cast<float>(Config::WIN_HEIGHT);
@@ -1020,7 +1024,7 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
     const float BTN_W = 170.f;
     const float BTN_H = 50.f;
     const float BTN_GAP = 22.f;
-    float totalBtnsW = 3 * BTN_W + 2 * BTN_GAP; // Tinh tong chieu rong 3 nut
+    float totalBtnsW = 4 * BTN_W + 3 * BTN_GAP; // Tinh tong chieu rong 3 nut
 
     // Ep chieu rong panel phai du to de chua 4 nut
     float bottomPanelW = std::max(boardW + 40.f, totalBtnsW + 60.f);
@@ -1072,14 +1076,19 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
     float startBtnsX = boardCenterX - totalBtnsW / 2.f;
     float btnsY = timerY + timerH + 20.f;
 
-    std::string gameBtns[3] = { "UNDO", "HINT", "SAVE GAME" };
-    sf::Color btnColors[] = { Cyber::Cyan, sf::Color(90, 255, 170), Cyber::Yellow };
+    std::string gameBtns[4] = { "UNDO", "HINT", "SAVE GAME", isRecording ? "RECORDING" : "RECORD" };
+    sf::Color btnColors[] = {
+        Cyber::Cyan,
+        sf::Color(90, 255, 170),
+        Cyber::Yellow,
+        isRecording ? Cyber::NeonRed : sf::Color(120, 50, 60)
+    };
 
     int curHintIdx = isPlayerTurn ? 0 : 1;
     bool hintAvailable = (gameStatus == 0 && hintLeft[curHintIdx] > 0 && !(gameMode == GameMode::PVE && !isPlayerTurn));
 
     sf::Vector2f mPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         float bX = startBtnsX + i * (BTN_W + BTN_GAP);
         bool disabled = (i == 1 && !hintAvailable);
         bool hov = !disabled && (mPos.x >= bX && mPos.x <= bX + BTN_W && mPos.y >= btnsY && mPos.y <= btnsY + BTN_H);
@@ -1092,12 +1101,22 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
         Draw3DSciFiButton(window, bX, btnsY, BTN_W, BTN_H, fill, accent, hov ? 2.5f : (disabled ? 0.9f : 1.2f), hov, accent);
 
         sf::Color textCol = disabled ? sf::Color(85, 95, 110, 155) : (hov ? Cyber::White : sf::Color(175, 210, 200));
+        if (i == 3 && isRecording && !hov) 
+        {
+            float p = 0.5f + 0.5f * std::sin(st * 8.0f);
+            textCol = sf::Color(255, 150 + p * 100, 150 + p * 100);
+        }
         DrawCentredText(window, font, gameBtns[i], 20, textCol, bX + BTN_W / 2.f, btnsY + BTN_H / 2.f);
 
         if (i == 1 && hintAvailable) {
             float p = 0.5f + 0.5f * std::sin(st * 4.8f);
             DrawCornerBrackets(window, bX - 2.f, btnsY - 2.f, BTN_W + 4.f, BTN_H + 4.f,
                 sf::Color(90, 255, 170, static_cast<sf::Uint8>(120 + 95 * p)), 9.f, 1.6f);
+        }
+        else if (i == 3 && isRecording) {
+            float p = 0.5f + 0.5f * std::sin(st * 5.0f);
+            DrawCornerBrackets(window, bX - 2.f, btnsY - 2.f, BTN_W + 4.f, BTN_H + 4.f,
+                sf::Color(255, 50, 80, static_cast<sf::Uint8>(100 + 100 * p)), 9.f, 1.6f);
         }
         else if (hov) {
             DrawCornerBrackets(window, bX, btnsY, BTN_W, BTN_H, accent, 8.f, 1.5f);
@@ -3464,3 +3483,272 @@ void DrawPauseOverlay(sf::RenderWindow& window, const sf::Font& font)
             y + btnH / 2.f);
     }
 }
+
+static void DrawReplaySlotRowClean(sf::RenderWindow& window, const sf::Font& font,
+    float x, float y, float w, float h, int slotId, bool hasData, bool hovered,
+    const std::string& name, int boardSize, int moves, int vMode, bool showDeleteButton, float animT)
+{
+    float pulse = (std::sin(animT * 3.0f + slotId * 0.8f) + 1.f) * 0.5f;
+    sf::Color border = hovered ? sf::Color(0, 255, 255, static_cast<sf::Uint8>(190 + pulse * 60)) : sf::Color(40, 55, 80, 170);
+    sf::Color fill = hovered ? sf::Color(16, 32, 54, 238) : sf::Color(9, 13, 24, 225);
+
+    DrawNeonRect(window, x, y, w, h, fill, border, hovered ? 2.f : 1.f);
+    if (hovered) DrawNeonRect(window, x - 3.f, y - 3.f, w + 6.f, h + 6.f, sf::Color::Transparent, sf::Color(0, 255, 255, static_cast<sf::Uint8>(35 + pulse * 55)), 2.f);
+
+    sf::RectangleShape activeBar({ 5.f, h - 14.f });
+    activeBar.setPosition(x + 8.f, y + 7.f);
+    activeBar.setFillColor(hasData ? (hovered ? sf::Color(0, 255, 255, static_cast<sf::Uint8>(190 + pulse * 65)) : sf::Color(0, 170, 190, 180)) : sf::Color(45, 55, 75, 180));
+    window.draw(activeBar);
+
+    std::string slotText = "SLOT " + std::string(slotId < 10 ? "0" : "") + std::to_string(slotId);
+    sf::Text slot(slotText, font, 15);
+    slot.setStyle(sf::Text::Bold);
+    slot.setFillColor(hasData ? Cyber::Yellow : sf::Color(95, 110, 140));
+    slot.setPosition(x + 24.f, y + 10.f);
+    window.draw(slot);
+
+    sf::Text title(hasData ? name : "Empty Slot", font, hasData ? 22 : 20);
+    title.setStyle(hasData ? sf::Text::Bold : sf::Text::Regular);
+    title.setFillColor(hasData ? Cyber::White : sf::Color(120, 135, 160));
+    title.setPosition(x + 24.f, y + 30.f);
+    window.draw(title);
+
+    if (hasData) {
+        std::string meta = "MODE: " + std::string(vMode == 1 ? "VIRUS" : "NORMAL") + "  |  MOVES: " + std::to_string(moves);
+        sf::Text metaText(meta, font, 11);
+        metaText.setStyle(sf::Text::Bold);
+        metaText.setFillColor(vMode == 1 ? sf::Color(255, 0, 200, 185) : sf::Color(0, 255, 255, 185));
+        metaText.setPosition(x + 24.f, y + 55.f);
+        window.draw(metaText);
+    }
+
+    sf::CircleShape dot(4.f);
+    dot.setOrigin(4.f, 4.f);
+    dot.setPosition(x + w - 86.f, y + 18.f);
+    dot.setFillColor(hasData ? sf::Color(90, 255, 170, static_cast<sf::Uint8>(120 + pulse * 135)) : sf::Color(105, 110, 130, 140));
+    window.draw(dot);
+
+    sf::Text status(hasData ? "READY" : "EMPTY", font, 12);
+    status.setFillColor(hasData ? sf::Color(90, 255, 170) : sf::Color(105, 110, 130));
+    status.setPosition(x + w - 72.f, y + 12.f);
+    window.draw(status);
+
+    if (hasData && showDeleteButton) {
+        const float delW = 34.f, delH = 22.f, delX = x + w - delW - 10.f, delY = y + 8.f;
+        DrawNeonRect(window, delX, delY, delW, delH, hovered ? sf::Color(65, 16, 26, 235) : sf::Color(34, 14, 20, 215), hovered ? sf::Color(255, 95, 145, 220) : sf::Color(190, 70, 110, 170), 1.1f);
+        sf::Text delTxt("X", font, 14); delTxt.setStyle(sf::Text::Bold); delTxt.setFillColor(sf::Color(255, 170, 200, 240));
+        sf::FloatRect dr = delTxt.getLocalBounds(); delTxt.setOrigin(dr.left + dr.width / 2.f, dr.top + dr.height / 2.f);
+        delTxt.setPosition(delX + delW / 2.f, delY + delH / 2.f - 0.5f); window.draw(delTxt);
+    }
+    if (hovered) {
+        float local = std::fmod(animT * 130.f, w - 75.f);
+        sf::RectangleShape scan({ 72.f, 2.f }); scan.setPosition(x + 24.f + local, y + h - 12.f); scan.setFillColor(sf::Color(0, 255, 255, 85)); window.draw(scan);
+        DrawCornerBrackets(window, x - 2.f, y - 2.f, w + 4.f, h + 4.f, Cyber::Cyan, 8.f, 1.4f);
+    }
+}
+
+static void DrawReplayPreviewClean(sf::RenderWindow& window, const sf::Font& font,
+    float x, float y, float w, float h, const std::string& filename, float animT)
+{
+    float pulse = (std::sin(animT * 2.6f) + 1.f) * 0.5f;
+    DrawNeonRect(window, x, y, w, h, sf::Color(8, 12, 22, 225), sf::Color(0, 255, 255, static_cast<sf::Uint8>(85 + pulse * 45)), 1.4f);
+    DrawCornerBrackets(window, x, y, w, h, Cyber::Cyan, 14.f, 1.5f);
+
+    int bSize = 0, moves = 0, vMode = 0;
+    char dateBuf[32] = "";
+    int previewBoard[30][30] = { 0 };
+
+    bool hasPreview = (!filename.empty() && GetReplayPreview(filename.c_str(), &bSize, &moves, &vMode, dateBuf, previewBoard));
+
+    if (!hasPreview) {
+        sf::CircleShape waitRing(42.f, 64); waitRing.setOrigin(42.f, 42.f); waitRing.setPosition(x + w / 2.f, y + h / 2.f - 42.f);
+        waitRing.setFillColor(sf::Color::Transparent); waitRing.setOutlineThickness(1.2f); waitRing.setOutlineColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(35 + pulse * 55))); window.draw(waitRing);
+        sf::CircleShape waitCore(5.f + pulse * 2.f, 32); waitCore.setOrigin(waitCore.getRadius(), waitCore.getRadius()); waitCore.setPosition(x + w / 2.f, y + h / 2.f - 42.f);
+        waitCore.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(90 + pulse * 110))); window.draw(waitCore);
+        DrawCentredText(window, font, "HOVER A SLOT", 25, Cyber::Gray, x + w / 2.f, y + h / 2.f + 16.f);
+        DrawCentredText(window, font, "to preview replay information", 17, sf::Color(100, 125, 160), x + w / 2.f, y + h / 2.f + 50.f);
+        return;
+    }
+
+    const float delW = 34.f, delH = 24.f, delX = x + w - delW - 10.f, delY = y + 10.f;
+    sf::Vector2f mp = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    bool delHover = (mp.x >= delX && mp.x <= delX + delW && mp.y >= delY && mp.y <= delY + delH);
+    DrawNeonRect(window, delX, delY, delW, delH, delHover ? sf::Color(70, 18, 28, 235) : sf::Color(35, 14, 22, 215), delHover ? sf::Color(255, 95, 145, 230) : sf::Color(190, 70, 110, 180), 1.2f);
+    sf::Text delTxt("X", font, 14);
+    delTxt.setStyle(sf::Text::Bold); delTxt.setFillColor(sf::Color(255, 180, 210));
+    sf::FloatRect dtr = delTxt.getLocalBounds();
+    delTxt.setOrigin(dtr.left + dtr.width / 2.f, dtr.top + dtr.height / 2.f); delTxt.setPosition(delX + delW / 2.f, delY + delH / 2.f - 1.f); window.draw(delTxt);
+
+    sf::Text head("REPLAY INFORMATION", font, 17); head.setStyle(sf::Text::Bold); head.setFillColor(Cyber::Yellow); head.setPosition(x + 20.f, y + 16.f); window.draw(head);
+    sf::Text name(filename, font, 27); name.setStyle(sf::Text::Bold); name.setFillColor(sf::Color(220, 230, 255, 230 + static_cast<sf::Uint8>(pulse * 25))); name.setPosition(x + 20.f, y + 43.f); window.draw(name);
+    sf::Text date(std::string("Match date: ") + dateBuf, font, 14); date.setFillColor(sf::Color(120, 155, 190)); date.setPosition(x + 22.f, y + 80.f); window.draw(date);
+
+    const float cardY = y + 112.f, cardW = 132.f, cardH = 60.f, cardGap = 12.f;
+    DrawInfoMiniCard(window, font, x + 20.f, cardY, cardW, cardH, "BOARD", std::to_string(bSize) + "x" + std::to_string(bSize), Cyber::Cyan);
+    DrawInfoMiniCard(window, font, x + 20.f + cardW + cardGap, cardY, cardW, cardH, "TOTAL MOVES", std::to_string(moves), Cyber::Yellow);
+    DrawInfoMiniCard(window, font, x + 20.f + (cardW + cardGap) * 2.f, cardY, cardW, cardH, "MODE", vMode ? "VIRUS" : "NORMAL", vMode ? Cyber::NeonRed : Cyber::Cyan);
+
+    const float boardBox = 215.f; float bx = x + 20.f, by = y + 184.f;
+    DrawNeonRect(window, bx, by, boardBox, boardBox, sf::Color(4, 8, 16, 245), sf::Color(0, 255, 255, static_cast<sf::Uint8>(95 + pulse * 45)), 1.f);
+    DrawCornerBrackets(window, bx, by, boardBox, boardBox, Cyber::Cyan, 10.f, 1.2f);
+
+    if (bSize > 0) {
+        float cell = boardBox / static_cast<float>(bSize);
+        for (int i = 0; i <= bSize; ++i) {
+            sf::RectangleShape v({ 1.f, boardBox }); v.setPosition(bx + i * cell, by); v.setFillColor(sf::Color(0, 255, 255, 38)); window.draw(v);
+            sf::RectangleShape hLine({ boardBox, 1.f }); hLine.setPosition(bx, by + i * cell); hLine.setFillColor(sf::Color(0, 255, 255, 38)); window.draw(hLine);
+        }
+        for (int r = 0; r < bSize; ++r) {
+            for (int c = 0; c < bSize; ++c) {
+                int val = previewBoard[c][r];
+                if (val == 0) continue;
+
+                unsigned pieceSize = static_cast<unsigned>((cell * 0.62f > 11.f) ? cell * 0.62f : 11.f);
+                std::string symbol = (val == 1) ? "X" : ((val == 2) ? "O" : "V");
+
+                sf::Text piece(symbol, font, pieceSize);
+                
+                if (val == 1) {
+                    piece.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(200 + pulse * 55)));
+                }
+                else if (val == 2) {
+                    piece.setFillColor(sf::Color(255, 0, 200, static_cast<sf::Uint8>(200 + pulse * 55)));
+                }
+                else {
+                    float vx = bx + c * cell; 
+                    float vy = by + r * cell; 
+                    float vcx = vx + cell / 2.f; 
+                    float vcy = vy + cell / 2.f; 
+
+                    sf::RectangleShape virusGlow({ cell, cell });
+                    virusGlow.setPosition(vx, vy); 
+                    virusGlow.setFillColor(sf::Color(20, 85, 30, static_cast<sf::Uint8> (38 + pulse * 38)));
+                    window.draw(virusGlow);
+
+                    DrawCornerBrackets(window,
+                        vx + 1.f, vy + 1.f,
+                        cell - 2.f, cell - 2.f,
+                        sf::Color(90, 255, 120, static_cast<sf::Uint8>(145 + pulse * 70)),
+                        5.f, 1.2f);
+
+                    DrawVirusSkullIcon(window, vcx, vcy, cell, pulse);
+                }
+                sf::FloatRect pr = piece.getLocalBounds();
+                piece.setOrigin(pr.left + pr.width / 2.f, pr.top + pr.height / 2.f);
+                piece.setPosition(bx + c * cell + cell / 2.f, by + r * cell + cell / 2.f);
+                window.draw(piece);
+
+            }
+        }
+    }
+
+    float infoX = bx + boardBox + 18.f, infoY = by, infoW = w - (infoX - x) - 20.f;
+    DrawNeonRect(window, infoX, infoY, infoW, boardBox, sf::Color(10, 16, 30, 210), sf::Color(255, 0, 200, static_cast<sf::Uint8>(75 + pulse * 45)), 1.f);
+    sf::Text infoHead("MATCH DETAILS", font, 14); infoHead.setStyle(sf::Text::Bold); infoHead.setFillColor(Cyber::Magenta); infoHead.setPosition(infoX + 14.f, infoY + 14.f); window.draw(infoHead);
+
+    auto line = [&](const std::string& label, const std::string& value, float oy, sf::Color valueCol) {
+        sf::Text l(label, font, 12); l.setFillColor(sf::Color(115, 140, 175)); l.setPosition(infoX + 12.f, infoY + oy); window.draw(l);
+        sf::Text v(value, font, 15); v.setStyle(sf::Text::Bold); v.setFillColor(valueCol); v.setPosition(infoX + 12.f, infoY + oy + 17.f); window.draw(v);
+        };
+    line("FILE NAME", filename, 44.f, Cyber::White);
+    line("REPLAY SIZE", std::to_string(moves * 12) + " Bytes", 88.f, Cyber::Cyan);
+    line("STATUS", "READY TO WATCH", 132.f, sf::Color(90, 255, 170));
+
+    sf::RectangleShape div({ infoW - 24.f, 1.f }); div.setPosition(infoX + 12.f, infoY + 178.f); div.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(45 + pulse * 45))); window.draw(div);
+    sf::CircleShape readyDot(4.f + pulse * 1.5f); readyDot.setOrigin(readyDot.getRadius(), readyDot.getRadius()); readyDot.setPosition(infoX + infoW - 24.f, infoY + 155.f); readyDot.setFillColor(sf::Color(90, 255, 170, static_cast<sf::Uint8>(120 + pulse * 135))); window.draw(readyDot);
+}
+
+void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font)
+{
+    static sf::Clock loadAnimClock;
+    float animT = loadAnimClock.getElapsedTime().asSeconds();
+    float W = static_cast<float>(Config::WIN_WIDTH); float H = static_cast<float>(Config::WIN_HEIGHT);
+
+    sf::RectangleShape bg({ W, H }); bg.setFillColor(sf::Color(8, 10, 18)); window.draw(bg);
+    for (float x = 0.f; x < W; x += 64.f) { sf::RectangleShape line({ 1.f, H }); line.setPosition(x, 0.f); line.setFillColor(sf::Color(0, 255, 255, 5)); window.draw(line); }
+    for (float y = 0.f; y < H; y += 48.f) { sf::RectangleShape line({ W, 1.f }); line.setPosition(0.f, y); line.setFillColor(sf::Color(255, 0, 200, 4)); window.draw(line); }
+
+    float circlePulse = (std::sin(animT * 1.5f) + 1.f) * 0.5f;
+    sf::CircleShape bigCircle(370.f, 96); bigCircle.setOrigin(370.f, 370.f); bigCircle.setPosition(W / 2.f, H / 2.f + 10.f); bigCircle.setFillColor(sf::Color::Transparent); bigCircle.setOutlineThickness(1.f); bigCircle.setOutlineColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(18 + circlePulse * 18))); window.draw(bigCircle);
+    sf::CircleShape innerCircle(270.f, 96); innerCircle.setOrigin(270.f, 270.f); innerCircle.setPosition(W / 2.f, H / 2.f + 10.f); innerCircle.setFillColor(sf::Color::Transparent); innerCircle.setOutlineThickness(1.f); innerCircle.setOutlineColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(12 + circlePulse * 15))); window.draw(innerCircle);
+    sf::RectangleShape sweep({ 370.f, 1.5f }); sweep.setOrigin(0.f, 0.75f); sweep.setPosition(W / 2.f, H / 2.f + 10.f); sweep.setRotation(animT * 0.8f * 180.f / 3.14159265f); sweep.setFillColor(sf::Color(0, 255, 255, 28)); window.draw(sweep);
+
+    sf::Vector2f mp = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    float titlePulse = (std::sin(animT * 2.2f) + 1.f) * 0.5f; float arrowOffset = std::sin(animT * 3.0f) * 8.f;
+
+    sf::Text arrowL(">>", font, 38); arrowL.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(150 + titlePulse * 105))); arrowL.setPosition(W / 2.f - 320.f - arrowOffset, 72.f); window.draw(arrowL);
+    sf::Text glowTitle("REPLAY ARCHIVE", font, 46); glowTitle.setStyle(sf::Text::Bold); glowTitle.setFillColor(sf::Color(255, 220, 0, static_cast<sf::Uint8>(35 + titlePulse * 35))); sf::FloatRect gtr = glowTitle.getLocalBounds(); glowTitle.setOrigin(gtr.left + gtr.width / 2.f, gtr.top + gtr.height / 2.f); glowTitle.setPosition(W / 2.f + 2.f, 92.f + 2.f); window.draw(glowTitle);
+    sf::Text title("REPLAY ARCHIVE", font, 46); title.setStyle(sf::Text::Bold); title.setFillColor(Cyber::Yellow); sf::FloatRect tr = title.getLocalBounds(); title.setOrigin(tr.left + tr.width / 2.f, tr.top + tr.height / 2.f); title.setPosition(W / 2.f, 92.f); window.draw(title);
+    sf::Text arrowR("<<", font, 38); arrowR.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(150 + titlePulse * 105))); arrowR.setPosition(W / 2.f + 265.f + arrowOffset, 72.f); window.draw(arrowR);
+
+    const float panelW = 980.f, panelH = 520.f, panelX = W / 2.f - panelW / 2.f, panelY = 150.f;
+    DrawNeonRect(window, panelX, panelY, panelW, panelH, sf::Color(6, 10, 18, 225), sf::Color(0, 255, 255, static_cast<sf::Uint8>(90 + titlePulse * 45)), 1.5f);
+    DrawCornerBrackets(window, panelX - 8.f, panelY - 8.f, panelW + 16.f, panelH + 16.f, sf::Color(0, 255, 255, static_cast<sf::Uint8>(190 + titlePulse * 65)), 38.f, 3.f);
+    DrawSectionHeader(window, font, "[ ARCHIVED MATCHES ]", panelX + 28.f, panelY + 26.f, 390.f, Cyber::Cyan);
+    DrawSectionHeader(window, font, "[ REPLAY DETAILS ]", panelX + 455.f, panelY + 26.f, 475.f, Cyber::Magenta);
+
+    std::vector<std::string> files;
+    for (const auto& entry : std::filesystem::directory_iterator(".")) {
+        if (entry.path().extension() == ".rep") files.push_back(entry.path().filename().string());
+    }
+    std::sort(files.begin(), files.end(), std::greater<std::string>());
+
+    const float slotX = panelX + 28.f, slotY = panelY + 58.f, slotW = 390.f, slotH = 72.f, gap = 18.f;
+    int hoveredSlot = -1;
+    for (int i = 1; i <= 5; ++i) {
+        float y = slotY + (i - 1) * (slotH + gap);
+        if (mp.x >= slotX && mp.x <= slotX + slotW && mp.y >= y && mp.y <= y + slotH) hoveredSlot = i;
+    }
+
+    if (hoveredSlot != -1)
+    {
+        if (hoveredSlot <= files.size())
+        {
+            gReplayPreviewSlotUI = hoveredSlot;
+        }
+    }
+    
+    if (files.empty()) {
+        gReplayPreviewSlotUI = 1; 
+    }
+    else {
+        if (gReplayPreviewSlotUI < 1) {
+            gReplayPreviewSlotUI = 1; 
+        }
+        if (gReplayPreviewSlotUI > files.size())
+        {
+            gReplayPreviewSlotUI = files.size();
+        }
+    }
+    for (int i = 1; i <= 5; ++i) {
+        float y = slotY + (i - 1) * (slotH + gap);
+        bool hasData = (i - 1 < files.size());
+        int bSize = 0, moves = 0, vMode = 0; char rDate[32] = "";
+        std::string fname = "";
+        if (hasData) {
+            fname = files[i - 1];
+            PeekReplayFile(fname.c_str(), &bSize, &moves, (bool*)&vMode, rDate);
+        }
+        DrawReplaySlotRowClean(window, font, slotX, y, slotW, slotH, i, hasData, hoveredSlot == i, fname, bSize, moves, vMode, false, animT);
+    }
+
+    const float prevX = panelX + 455.f, prevY = panelY + 58.f, prevW = 490.f, prevH = 420.f;
+    std::string previewFile = (gReplayPreviewSlotUI - 1 < files.size()) ? files[gReplayPreviewSlotUI - 1] : "";
+    DrawReplayPreviewClean(window, font, prevX, prevY, prevW, prevH, previewFile, animT);
+
+    sf::Text foot("REPLAY.SYS // MATCH ARCHIVE ACCESS", font, 12); foot.setFillColor(sf::Color(0, 255, 255, 110)); foot.setPosition(panelX + 36.f, panelY + panelH - 22.f); window.draw(foot);
+
+    float bitsX = panelX + panelW - 210.f, bitsY = panelY + panelH - 24.f;
+    for (int i = 0; i < 18; ++i) {
+        float bh = 4.f + ((i % 4) * 2.f); float alphaPulse = (std::sin(animT * 4.f + i * 0.65f) + 1.f) * 0.5f;
+        sf::RectangleShape bit({ 5.f, bh }); bit.setPosition(bitsX + i * 8.f, bitsY - bh + 5.f);
+        bit.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(45 + alphaPulse * 100))); window.draw(bit);
+    }
+
+    const float BW = 300.f, BH = 60.f; float BX = W / 2.f - BW / 2.f, BY = panelY + panelH + 32.f;
+    bool bhHover = (mp.x >= BX && mp.x <= BX + BW && mp.y >= BY && mp.y <= BY + BH);
+    DrawNeonRect(window, BX, BY, BW, BH, bhHover ? sf::Color(20, 40, 70) : Cyber::BgBtn, bhHover ? Cyber::Magenta : Cyber::Grid, 2.f);
+    if (bhHover) DrawCornerBrackets(window, BX, BY, BW, BH, Cyber::Magenta, 10.f, 2.f);
+    DrawCentredText(window, font, "BACK TO MENU", 24, bhHover ? Cyber::White : sf::Color(160, 175, 200), BX + BW / 2.f, BY + BH / 2.f);
+}
+

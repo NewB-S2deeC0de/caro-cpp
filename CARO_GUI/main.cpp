@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <filesystem>
 
 static std::string HintStatePath_Main(int slotId)
 {
@@ -103,6 +104,11 @@ int main()
     bool  isPlayerTurn = true;
     float timeRemaining = 60.f;
     int   gameStatus = 0;
+
+    bool  isRecording = false; 
+    bool  hasSavedReplay = false; 
+    bool isReplaying = false; 
+    float replayTimer = 0.f;
 
     bool  ruleBlock2 = true;
     int   aiLevel = 3;
@@ -202,6 +208,8 @@ int main()
                     }
                     else if (selectionStep == 4) {
                         currentState = AppState::IN_GAME_SCREEN;
+                        isRecording = false; 
+                        hasSavedReplay = false; 
                     }
                 }
             }
@@ -285,6 +293,9 @@ int main()
                         if (mx >= btnX && mx <= btnX + 300.f && my >= btnY && my <= btnY + 70.f) {
                             if (selectionStep == 4) {
                                 currentState = AppState::IN_GAME_SCREEN;
+
+                                isRecording = false; 
+                                hasSavedReplay = false; 
                             }
                         }
                     }
@@ -345,6 +356,7 @@ int main()
                         float noX = W / 2.f + gap / 2.f;
                         float btnY = boxY + 160.f;
 
+
                         if (mx >= yesX && mx <= yesX + btnW && my >= btnY && my <= btnY + btnH)
                         {
                             InitGame(boardSize, ruleBlock2, aiLevel);
@@ -365,6 +377,8 @@ int main()
                             hintLeft[1] = 1;
                             undoLeft[0] = Config::UNDO_MAX;
                             undoLeft[1] = Config::UNDO_MAX;
+                            isRecording = false; 
+                            hasSavedReplay = false; 
                             lastUndoPlayer = -1;
                             saveNotifTimer = 0.f;
                             currentLoadedSlot = -1;
@@ -488,22 +502,42 @@ int main()
                             virusMode = IsVirusMode();
                         }
                     }
+                    else if (currentState == AppState::LOAD_REPLAY_SCREEN)
+                    {
+                        HandleLoadReplayInput(window, mx, my, currentState, isReplaying, replayTimer, errSound, p1Char, p2Char, p1Name, p2Name);
+                        
+                        if (currentState == AppState::IN_GAME_SCREEN)
+                        {
+                            selectionStep = 4;
+
+                            gameStatus = 0;           
+                            timeRemaining = 60.f;     
+                            isPlayerTurn = true;      
+                            
+                            winX1 = -1;
+                            winY1 = -1;
+                            winX2 = -1;
+                            winY2 = -1;
+                        }
+                    }
                     else if (currentState == AppState::SAVE_SCREEN)
                     {
                         HandleSaveInput(window, mx, my, currentState, timeRemaining, isPlayerTurn, saveNotifTimer, errSound, isNaming, selectedSlotToSave, currentInputName, currentLoadedSlot, currentLoadedName, gameMode, isConfirmOverwrite, slotToOverwrite, hintLeft);
                     }
                     else if (currentState == AppState::IN_GAME_SCREEN)
                     {
-                        HandleInGameInput(
-                            event.mouseButton.x, event.mouseButton.y,
-                            currentState, boardSize, gameMode,
-                            isPlayerTurn, gameStatus, timeRemaining, undoLeft,
-                            lastUndoPlayer, saveNotifTimer, errSound,
-                            currentLoadedSlot, currentLoadedName,
-                            ruleBlock2, aiLevel,
-                            hintX, hintY, hintLeft,
-                            isConfirmMainMenu
-                        );
+                        if (!isReplaying) {
+                            HandleInGameInput(
+                                event.mouseButton.x, event.mouseButton.y,
+                                currentState, boardSize, gameMode,
+                                isPlayerTurn, gameStatus, timeRemaining, undoLeft,
+                                lastUndoPlayer, saveNotifTimer, errSound,
+                                currentLoadedSlot, currentLoadedName,
+                                ruleBlock2, aiLevel,
+                                hintX, hintY, hintLeft,
+                                isConfirmMainMenu, isRecording
+                            );
+                        }                 
                     }
                     else if (currentState == AppState::SETTINGS_SCREEN)
                     {
@@ -540,7 +574,7 @@ int main()
                     continue;
                 }
 
-                if (isPaused)
+                if (isPaused || isReplaying)
                 {
                     continue;
                 }
@@ -640,7 +674,16 @@ int main()
         {
             UpdateAI();
         }
-        if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0 && !isConfirmMainMenu && !isConfirmNewGame && !isPaused)
+        if (isReplaying && !isPaused && !isConfirmMainMenu) {
+            replayTimer += dt;
+            if (replayTimer >= 3.0f) {
+                replayTimer = 0.f;
+                if (ProcessNextReplayMove()) {
+                    gameStatus = EvaluateBoard(); 
+                }
+            }
+        }
+        if (currentState == AppState::IN_GAME_SCREEN && gameStatus == 0 && !isConfirmMainMenu && !isConfirmNewGame && !isPaused && !isReplaying)
         {
             timeRemaining -= dt;
             if (timeRemaining <= 0.f)
@@ -659,6 +702,7 @@ int main()
                     if (gameStatus != 0)
                     {
                         GetWinLine(&winX1, &winY1, &winX2, &winY2);
+
                     }
                     isPlayerTurn = true;
                     hintX = -1;
@@ -672,6 +716,16 @@ int main()
         if (gameStatus != 0)
         {
             if (winX1 == -1) GetWinLine(&winX1, &winY1, &winX2, &winY2);
+
+            if (isRecording && !hasSavedReplay)
+            {
+                std::time_t t = std::time(nullptr);
+                std::string filename = "replay_" + std::to_string(t) + ".rep";
+
+                SaveGameReplay(filename);
+
+                hasSavedReplay = true; 
+            }
         }
         else if (gameStatus == 0) {
             winX1 = -1; winY1 = -1; winX2 = -1; winY2 = -1;
@@ -692,6 +746,10 @@ int main()
         {
             DrawLoadScreen(window, font);
         }
+        else if (currentState == AppState::LOAD_REPLAY_SCREEN)
+        {
+            DrawLoadReplayScreen(window, font);
+        }
         else if (currentState == AppState::SAVE_SCREEN)
         {
             DrawSaveScreen(window, font, isNaming, currentInputName, clock, isConfirmOverwrite);
@@ -702,6 +760,7 @@ int main()
         }
         else if (currentState == AppState::IN_GAME_SCREEN)
         {
+
             window.draw(menuBgSprite);
             DrawBoard(window, boardSize);
             DrawPieces(window, boardSize);
@@ -733,7 +792,7 @@ int main()
 
             if (gameStatus != 0) DrawWinLine(window, winX1, winY1, winX2, winY2, boardSize);
             // TRUYỀN THÊM p1Char, p2Char, p1Name, p2Name, charSprites VÀO ĐÂY:
-            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, hintLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites);
+            DrawInGamePanel(window, font, timeRemaining, isPlayerTurn, gameStatus, boardSize, gameMode, undoLeft, hintLeft, saveNotifTimer, p1Char, p2Char, p1Name, p2Name, charSprites, isRecording);
 
             if (isPaused)
             {
@@ -743,11 +802,13 @@ int main()
             if (isConfirmMainMenu)
             {
                 DrawConfirmMainMenuOverlay(window, font);
+                isReplaying = false; 
             }
 
             if (isConfirmNewGame)
             {
                 DrawConfirmNewGameOverlay(window, font);
+                isReplaying = false; 
             }
         }
         else if (currentState == AppState::ABOUT_SCREEN)

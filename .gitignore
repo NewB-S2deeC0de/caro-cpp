@@ -55,3 +55,7 @@ Release/
 # user settings
 *.user
 *.suo
+
+# binary files 
+*.bin 
+*.rep 

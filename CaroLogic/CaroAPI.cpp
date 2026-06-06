@@ -7,6 +7,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <random>
+#include <fstream>
 
 // ============================================================
 //  TRẠNG THÁI BÀN CỜ
@@ -37,6 +39,9 @@ int        g_historyCount = 0;
 bool g_virusMode = false;
 int  g_virusMoveCounter = 0;
 int  g_virusTTL[30][30] = { 0 };
+
+unsigned int g_virusSeed = 0; 
+std::mt19937 g_virusRng; 
 
 // Helper nội bộ: đẩy 1 nước vào stack
 static void PushHistory(int x, int y, int player)
@@ -112,7 +117,7 @@ static bool FindRandomEmptyCell(int& outX, int& outY)
 
     if (emptyCount <= 0) return false;
 
-    int pick = std::rand() % emptyCount;
+    int pick = g_virusRng() % emptyCount;
     for (int i = 0; i < g_boardSize; ++i)
     {
         for (int j = 0; j < g_boardSize; ++j)
@@ -141,8 +146,8 @@ static void SpawnVirusWave()
     int active = CountVirusCells();
     if (active >= maxCells) return;
 
-    static bool seeded = false;
-    if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
+    //static bool seeded = false;
+    //if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
 
     int centerX = -1;
     int centerY = -1;
@@ -168,7 +173,7 @@ static void SpawnVirusWave()
 
         for (int tries = 0; tries < 16 && !placed; ++tries)
         {
-            int k = std::rand() % 8;
+            int k = g_virusRng() % 8;
             if (used[k]) continue;
             used[k] = true;
 
@@ -241,6 +246,9 @@ extern "C" CARO_API void InitGame(int size, bool ruleBlock2, int level)
     g_historyCount = 0;
     g_winStartX = g_winStartY = g_winEndX = g_winEndY = -1;
     ClearVirusCells();
+
+    g_virusSeed = static_cast<unsigned int>(std::time(nullptr));
+    g_virusRng.seed(g_virusSeed);
 }
 
 // ============================================================
@@ -605,4 +613,114 @@ extern "C" CARO_API int EvaluateBoard() {
     int lastPlayer = g_history[g_historyCount - 1].player;
     // Check lại xem nước đi cuối đó có tạo thành 5 ố thẳng hàng không
     return CheckWinCondition(lastX, lastY, lastPlayer);
+}
+
+extern "C" CARO_API bool SaveGameReplay(const std::string& filename)
+{
+    return SaveReplayBinary(filename);
+}
+
+static MoveRecord g_replayHistory[900];
+static int g_replayTotalMoves = 0;
+static int g_replayCurrentMove = 0;
+
+extern "C" CARO_API bool LoadGameReplay(const char* filename) {
+    ReplayMetadata meta;
+    if (LoadReplayBinary(std::string(filename), &meta, g_replayHistory)) {
+        InitGame(meta.boardSize, meta.ruleBlock2, meta.aiLevel);
+        SetVirusMode(meta.virusMode);
+
+        g_replayTotalMoves = meta.historyCount;
+        g_replayCurrentMove = 0;
+        
+        g_virusSeed = meta.virusSeed; 
+        g_virusRng.seed(g_virusSeed);
+        return true;
+    }
+    return false;
+}
+
+extern "C" CARO_API bool ProcessNextReplayMove() {
+    if (g_replayCurrentMove < g_replayTotalMoves) {
+        MoveRecord m = g_replayHistory[g_replayCurrentMove];
+
+        ProcessMove(m.x, m.y, m.player);
+
+        g_replayCurrentMove++;
+        return true;
+    }
+    return false; 
+}
+
+extern "C" CARO_API bool PeekReplayFile(const char* filename, int* outBoardSize, int* outMoves, bool* outVirusMode, char* outDate) {
+    ReplayMetadata meta;
+    if (PeekReplayMetadata(std::string(filename), &meta)) {
+        *outBoardSize = meta.boardSize;
+        *outMoves = meta.historyCount;
+        *outVirusMode = meta.virusMode;
+        strcpy_s(outDate, 32, meta.replayDate);
+        return true;
+    }
+    return false;
+}
+
+extern "C" CARO_API bool GetReplayPreview
+(
+    const char* filename, int* outBoardSize,
+    int* outMoves, int* outVirusMode, char* outDate,
+    int outBoard[30][30]
+)
+{
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open())
+    {
+        return false; 
+    }
+
+    ReplayMetadata meta; 
+    file.read(reinterpret_cast<char*>(&meta), sizeof(ReplayMetadata)); 
+    if (std::strcmp(meta.magic, "CAROREP") != 0) 
+    {
+        return false;
+    }
+
+    *outBoardSize = meta.boardSize;
+    *outMoves = meta.historyCount;
+    *outVirusMode = meta.virusMode ? 1 : 0;
+    strcpy_s(outDate, 32, meta.replayDate);
+
+    if (meta.historyCount > 0) 
+    {
+        file.seekg(sizeof(MoveRecord) * meta.historyCount, std::ios::cur); 
+    }
+
+    if (file.read(reinterpret_cast<char*>(outBoard), sizeof(int) * 30 * 30))
+    {
+        file.close(); 
+        return true;
+    }
+
+    file.clear(); 
+    file.seekg(sizeof(ReplayMetadata), std::ios::beg); 
+    
+    for (int i = 0; i < 30; i++)
+    {
+        for (int j = 0; j < 30; j++)
+        {
+            outBoard[i][j] = 0;
+        }
+    }
+
+    for (int i = 0; i < meta.historyCount; i++) {
+        MoveRecord m; 
+        file.read(reinterpret_cast<char*>(&m), sizeof(MoveRecord)); 
+        outBoard[m.x][m.y] = m.player;
+    }
+
+    file.close();
+    return false; 
+}
+
+extern "C" CARO_API bool DeleteReplayFile(const char* filename) {
+    return DeleteReplayBinary(std::string(filename));
 }

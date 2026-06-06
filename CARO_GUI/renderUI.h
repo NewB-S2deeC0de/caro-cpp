@@ -20,7 +20,7 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font,
     int boardSize, GameMode gameMode, int undoLeft[2], int hintLeft[2],
     float saveNotifTimer, int p1Char, int p2Char,
     const std::string& p1Name, const std::string& p2Name,
-    sf::Sprite charSprites[4]
+    sf::Sprite charSprites[4], bool isRecording
 );
 
 void DrawSettings(sf::RenderWindow& window, const sf::Font& font,
@@ -43,3 +43,5 @@ void DrawConfirmMainMenuOverlay(sf::RenderWindow& window, const sf::Font& font);
 void DrawConfirmNewGameOverlay(sf::RenderWindow& window, const sf::Font& font);
 
 void DrawPauseOverlay(sf::RenderWindow& window, const sf::Font& font);
+
+void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font);

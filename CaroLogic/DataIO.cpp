@@ -18,6 +18,8 @@ extern int g_virusMoveCounter;
 extern int g_virusTTL[30][30];
 extern int g_savedGameMode;
 
+extern unsigned int g_virusSeed; 
+
 static void ClearVirusStateIO()
 {
     g_virusMode = false;
@@ -223,4 +225,65 @@ int PeekSlotVirusMode(int slotId) {
     if (!file.read(reinterpret_cast<char*>(&vCounter), sizeof(vCounter))) return vMode ? 1 : 0;
 
     return vMode ? 1 : 0;
+}
+
+bool SaveReplayBinary(const std::string& filename) {
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    if (!file.is_open()) return false;
+
+    ReplayMetadata meta = {};
+    strcpy_s(meta.magic, sizeof(meta.magic), "CAROREP");
+    meta.version = 1;
+    meta.boardSize = g_boardSize;
+    meta.ruleBlock2 = g_ruleBlock2;
+    meta.aiLevel = g_aiLevel;
+    meta.virusMode = g_virusMode;
+    meta.virusSeed = g_virusSeed; 
+    meta.historyCount = g_historyCount;
+
+    std::time_t t = std::time(nullptr);
+    struct tm timeinfo;
+    localtime_s(&timeinfo, &t);
+    std::strftime(meta.replayDate, sizeof(meta.replayDate), "%d/%m/%Y %H:%M", &timeinfo);
+
+    file.write(reinterpret_cast<const char*>(&meta), sizeof(ReplayMetadata));
+
+    if (g_historyCount > 0) {
+        file.write(reinterpret_cast<const char*>(g_history), sizeof(MoveRecord) * g_historyCount);
+    }
+
+    file.write(reinterpret_cast<const char*>(g_board), sizeof(int) * 30 * 30);
+
+    file.close();
+    return true;
+}
+
+bool LoadReplayBinary(const std::string& filename, ReplayMetadata* outMeta, MoveRecord* outHistory) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open()) return false;
+
+    file.read(reinterpret_cast<char*>(outMeta), sizeof(ReplayMetadata));
+    if (std::strcmp(outMeta->magic, "CAROREP") != 0) return false;
+
+    if (outMeta->historyCount > 0) {
+        file.read(reinterpret_cast<char*>(outHistory), sizeof(MoveRecord) * outMeta->historyCount);
+    }
+
+    file.close();
+    return true;
+}
+
+bool PeekReplayMetadata(const std::string& filename, ReplayMetadata* outMeta) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open())
+    {
+        return false;
+    }
+    file.read(reinterpret_cast<char*>(outMeta), sizeof(ReplayMetadata));
+    file.close();
+    return (std::strcmp(outMeta->magic, "CAROREP") == 0);
+}
+
+bool DeleteReplayBinary(const std::string& filename) {
+    return std::remove(filename.c_str()) == 0;
 }

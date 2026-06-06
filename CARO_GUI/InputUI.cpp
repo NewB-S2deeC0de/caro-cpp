@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <fstream>
 #include <cstdio>
+#include <filesystem>
 
 extern int gLoadPreviewSlotUI;
+extern int gReplayPreviewSlotUI;
 
 // ============================================================
 //  Helper nội bộ
@@ -80,13 +82,13 @@ void HandleMenuInput(
     sf::Sound& errSound, int& currentLoadedSlot,
     std::string& currentLoadedName)
 {
-    const float BTN_W = 350.f;
-    const float BTN_H = 60.f;
+    const float BTN_W = 380.f;
+    const float BTN_H = 62.f;
     const float BTN_X = Config::WIN_WIDTH / 2.f - BTN_W / 2.f;
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 7; ++i)
     {
-        float bY = 300.f + i * 80.f;
+        float bY = 226.f + i * 82.f;
 
         if (mouseX >= BTN_X && mouseX <= BTN_X + BTN_W &&
             mouseY >= bY && mouseY <= bY + BTN_H)
@@ -113,11 +115,15 @@ void HandleMenuInput(
             {
                 currentState = AppState::LOAD_SCREEN;
             }
-            else if (i == 4) // Chuyển sang màn hình About[cite: 2]
+            else if (i == 4) 
+            {
+                currentState = AppState::LOAD_REPLAY_SCREEN;
+            }
+            else if (i == 5) 
             {
                 currentState = AppState::ABOUT_SCREEN;
             }
-            else if (i == 5) // Nút thoát được đẩy xuống cuối[cite: 2]
+            else if (i == 6) 
             {
                 window.close();
             }
@@ -150,7 +156,8 @@ void HandleInGameInput(
     std::string& currentLoadedName,
     bool ruleBlock2, int aiLevel,
     int& hintX, int& hintY, int hintLeft[2],
-    bool& isConfirmMainMenu) // them hintLeft de moi nguoi chi goi y 1 lan
+    bool& isConfirmMainMenu, 
+    bool& isRecording) // them hintLeft de moi nguoi chi goi y 1 lan
 {
     static sf::Clock clickCooldown;
     if (clickCooldown.getElapsedTime().asMilliseconds() < 150) return;
@@ -179,7 +186,7 @@ void HandleInGameInput(
     }
 
     // =========================================================
-    // ── B. TỌA ĐỘ 3 NÚT BẤM (Ở BẢNG ĐIỀU KHIỂN DƯỚI BÀN CỜ) ──
+    // ── B. TỌA ĐỘ 4 NÚT BẤM (Ở BẢNG ĐIỀU KHIỂN DƯỚI BÀN CỜ) ──
     // =========================================================
     float boardCenterX = static_cast<float>(Config::WIN_WIDTH) / 2.f;
     float CARD_H = 340.f;
@@ -189,12 +196,12 @@ void HandleInGameInput(
     const float BTN_W = 170.f;
     const float BTN_H = 50.f;
     const float BTN_GAP = 22.f;
-    float totalBtnsW = 3 * BTN_W + 2 * BTN_GAP;
+    float totalBtnsW = 4 * BTN_W + 3 * BTN_GAP;
     float startBtnsX = boardCenterX - totalBtnsW / 2.f;
 
     float btnsY = bottomPanelY + 20.f + timerH + 20.f;
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         float bX = startBtnsX + i * (BTN_W + BTN_GAP);
         if (mouseX >= bX && mouseX <= bX + BTN_W && mouseY >= btnsY && mouseY <= btnsY + BTN_H)
@@ -267,7 +274,11 @@ void HandleInGameInput(
                 }
                 else currentState = AppState::SAVE_SCREEN;
             }
-            return;
+            else if (i == 3)
+            {
+                isRecording = !isRecording;
+                return; 
+            }
         }
     }
 }
@@ -597,3 +608,106 @@ void HandleSaveInput(
     }
 }
 
+void HandleLoadReplayInput(
+    sf::RenderWindow& window, int mouseX, int mouseY, AppState& currentState,
+    bool& isReplaying, float& replayTimer, sf::Sound& errSound,
+    int& p1Char, int& p2Char, std::string& p1Name, std::string& p2Name)
+{
+    float W = static_cast<float>(Config::WIN_WIDTH);
+    const float pW = 980.f;
+    const float pH = 520.f;
+    const float pX = W / 2.f - pW / 2.f;
+    const float pY = 150.f;
+
+    std::vector<std::string> files;
+    for (const auto& entry : std::filesystem::directory_iterator(".")) 
+    {
+        if (entry.path().extension() == ".rep")
+        {
+            files.push_back(entry.path().filename().string());
+        }
+    }
+    std::sort(files.begin(), files.end(), std::greater<std::string>());
+
+    int remainingFiles = (int)files.size();
+    if (gReplayPreviewSlotUI >= 1 && gReplayPreviewSlotUI <= remainingFiles)
+    {
+        const float prevX = pX + 455.f; 
+        const float prevY = pY + 58.f; 
+        const float prevW = 490.f; 
+        
+        const float delW = 34.f; 
+        const float delH = 24.f; 
+        const float delX = prevX + prevW - delW - 10.f; 
+        const float delY = prevY + 10.f; 
+
+        if (mouseX >= delX && mouseX <= delX + delW && mouseY >= delY && mouseY <= delY + delH)
+        {
+            //int idx = gReplayPreviewSlotUI - 1;
+            //if (idx < 0 || idx >= (int)files.size()) return;
+
+            std::string fileToDelete = files[gReplayPreviewSlotUI - 1];
+            
+            if (DeleteReplayFile(fileToDelete.c_str()))
+            {
+                files.erase(files.begin() + (gReplayPreviewSlotUI - 1));
+                remainingFiles--;
+                
+                if (files.empty()) {
+                    gReplayPreviewSlotUI = 1; 
+                }
+                else if (gReplayPreviewSlotUI > remainingFiles)
+                {
+                    gReplayPreviewSlotUI = remainingFiles;
+                }
+            }
+            return; 
+        }
+
+    }
+    const float slotX = pX + 28.f; 
+    const float slotY = pY + 58.f; 
+    const float slotW = 390.f; 
+    const float slotH = 72.f; 
+    const float gap = 18.f;
+    
+
+    // Kiểm tra click vào Slots
+    for (int i = 0; i < 5; ++i) {
+        float y = slotY + i * (slotH + gap);
+        if (mouseX >= slotX + 50.f && mouseX <= slotX + slotW && mouseY >= y && mouseY <= y + slotH) 
+        {
+            gReplayPreviewSlotUI = i; 
+
+            if (i < files.size()) {
+                if (LoadGameReplay(files[i].c_str())) 
+                {
+                    isReplaying = true;
+                    replayTimer = 5.0f; 
+                    currentState = AppState::IN_GAME_SCREEN;
+
+                    p1Char = 0; p2Char = 1;
+                    p1Name = "REPLAY"; p2Name = "VIEWER";
+                }
+                else
+                {
+                    errSound.play();
+                }
+            }
+            else
+            {
+                errSound.play();
+            }
+            return;
+        }
+    }
+
+    const float BW = 300.f; 
+    const float BH = 60.f; 
+    float BX = W / 2.f - BW / 2.f; 
+    float BY = pY + 520.f + 32.f; 
+    if (mouseX >= BX && mouseX <= BX + BW && mouseY >= BY && mouseY <= BY + BH) 
+    {
+        currentState = AppState::MENU_SCREEN;
+    }
+}
