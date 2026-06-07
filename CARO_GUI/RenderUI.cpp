@@ -34,7 +34,7 @@ namespace Cyber {
 }
 
 int gLoadPreviewSlotUI = 1;
-int gReplayPreviewSlotUI = 0; 
+int gReplayPreviewSlotUI = 0;
 
 static std::string SaveModeLabel(int virusMode)
 {
@@ -1101,7 +1101,7 @@ void DrawInGamePanel(sf::RenderWindow& window, const sf::Font& font, float timeR
         Draw3DSciFiButton(window, bX, btnsY, BTN_W, BTN_H, fill, accent, hov ? 2.5f : (disabled ? 0.9f : 1.2f), hov, accent);
 
         sf::Color textCol = disabled ? sf::Color(85, 95, 110, 155) : (hov ? Cyber::White : sf::Color(175, 210, 200));
-        if (i == 3 && isRecording && !hov) 
+        if (i == 3 && isRecording && !hov)
         {
             float p = 0.5f + 0.5f * std::sin(st * 8.0f);
             textCol = sf::Color(255, 150 + p * 100, 150 + p * 100);
@@ -1764,10 +1764,14 @@ void DrawVirusStatusBadge(sf::RenderWindow& window, const sf::Font& font)
     if (!enabled) return;
 
     float W = static_cast<float>(Config::WIN_WIDTH);
-    float x = W / 2.f - 240.f;
     float y = 72.f;
     float w = 430.f;
     float h = 34.f;
+
+    // Center the virus status badge horizontally on the screen.
+    // Old code used W / 2 - 240 while the badge width is 430,
+    // which shifted the badge about 25 px to the left.
+    float x = (W - w) / 2.f;
 
     static sf::Clock badgeClock;
     float t = badgeClock.getElapsedTime().asSeconds();
@@ -3607,7 +3611,7 @@ static void DrawReplayPreviewClean(sf::RenderWindow& window, const sf::Font& fon
                 std::string symbol = (val == 1) ? "X" : ((val == 2) ? "O" : "V");
 
                 sf::Text piece(symbol, font, pieceSize);
-                
+
                 if (val == 1) {
                     piece.setFillColor(sf::Color(0, 255, 255, static_cast<sf::Uint8>(200 + pulse * 55)));
                 }
@@ -3615,13 +3619,13 @@ static void DrawReplayPreviewClean(sf::RenderWindow& window, const sf::Font& fon
                     piece.setFillColor(sf::Color(255, 0, 200, static_cast<sf::Uint8>(200 + pulse * 55)));
                 }
                 else {
-                    float vx = bx + c * cell; 
-                    float vy = by + r * cell; 
-                    float vcx = vx + cell / 2.f; 
-                    float vcy = vy + cell / 2.f; 
+                    float vx = bx + c * cell;
+                    float vy = by + r * cell;
+                    float vcx = vx + cell / 2.f;
+                    float vcy = vy + cell / 2.f;
 
                     sf::RectangleShape virusGlow({ cell, cell });
-                    virusGlow.setPosition(vx, vy); 
+                    virusGlow.setPosition(vx, vy);
                     virusGlow.setFillColor(sf::Color(20, 85, 30, static_cast<sf::Uint8> (38 + pulse * 38)));
                     window.draw(virusGlow);
 
@@ -3707,13 +3711,13 @@ void DrawLoadReplayScreen(sf::RenderWindow& window, const sf::Font& font)
             gReplayPreviewSlotUI = hoveredSlot;
         }
     }
-    
+
     if (files.empty()) {
-        gReplayPreviewSlotUI = 1; 
+        gReplayPreviewSlotUI = 1;
     }
     else {
         if (gReplayPreviewSlotUI < 1) {
-            gReplayPreviewSlotUI = 1; 
+            gReplayPreviewSlotUI = 1;
         }
         if (gReplayPreviewSlotUI > files.size())
         {

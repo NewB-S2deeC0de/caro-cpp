@@ -34,14 +34,43 @@ static void SaveHintState(int slotId, const int hintLeft[2])
     file.write(reinterpret_cast<const char*>(hintLeft), sizeof(int) * 2);
 }
 
+static void ResizeView(const sf::Window& window, sf::View& view) {
+    float windowRatio = window.getSize().x / (float)window.getSize().y;
+    float viewRatio = static_cast<float>(Config::WIN_WIDTH) / static_cast<float>(Config::WIN_HEIGHT);
+    float sizeX = 1;
+    float sizeY = 1;
+    float posX = 0;
+    float posY = 0;
+
+    bool horizontalSpacing = windowRatio > viewRatio;
+
+    if (horizontalSpacing) 
+    {
+        sizeX = viewRatio / windowRatio;
+        posX = (1 - sizeX) / 2.f;
+    }
+    else 
+    {
+        sizeY = windowRatio / viewRatio;
+        posY = (1 - sizeY) / 2.f;
+    }
+
+    view.setViewport(sf::FloatRect(posX, posY, sizeX, sizeY));
+}
+
 int main()
 {
     sf::RenderWindow window(
         sf::VideoMode(Config::WIN_WIDTH, Config::WIN_HEIGHT),
-        "Caro Master"
+        "Caro Master",
+        sf::Style::Default
+
     );
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(false);
+
+    sf::View view(sf::FloatRect(0.f, 0.f, static_cast<float>(Config::WIN_WIDTH), static_cast<float>(Config::WIN_HEIGHT)));
+    window.setView(view);
 
     sf::Font font;
     if (!font.loadFromFile("assets/Rajdhani.ttf"))
@@ -173,9 +202,37 @@ int main()
                 window.close();
             }
 
+            if (event.type == sf::Event::Resized)
+            {
+                ResizeView(window, view);
+                window.setView(view);
+            }
+
             // ── XỬ LÝ GÕ PHÍM (Bấm Enter chuyển bước) ─────────
             if (event.type == sf::Event::KeyPressed)
             {
+                if (event.key.code == sf::Keyboard::F11)
+                {
+                    static bool isFullscreen = false;
+                    isFullscreen = !isFullscreen;
+
+                    if (isFullscreen) {
+                        // Chuyển sang Fullscreen với độ phân giải của Desktop hiện tại
+                        window.create(sf::VideoMode::getDesktopMode(), "Caro Master", sf::Style::Fullscreen);
+                    }
+                    else {
+                        // Trở về chế độ cửa sổ với kích thước gốc của cấu hình
+                        window.create(sf::VideoMode(Config::WIN_WIDTH, Config::WIN_HEIGHT), "Caro Master", sf::Style::Default);
+                    }
+
+                    // Bắt buộc phải thiết lập lại các thuộc tính này sau khi gọi window.create()
+                    window.setFramerateLimit(60);
+                    window.setKeyRepeatEnabled(false);
+
+                    // Cập nhật lại View ngay lập tức cho cửa sổ mới
+                    ResizeView(window, view);
+                    window.setView(view);
+                }
                 if (event.key.code == sf::Keyboard::Enter && currentState == AppState::CHAR_SELECT) {
                     if (selectionStep == 0 && p1Char != -1) {
                         selectionStep = 1;
@@ -528,7 +585,7 @@ int main()
                     {
                         if (!isReplaying) {
                             HandleInGameInput(
-                                event.mouseButton.x, event.mouseButton.y,
+                                mx, my,
                                 currentState, boardSize, gameMode,
                                 isPlayerTurn, gameStatus, timeRemaining, undoLeft,
                                 lastUndoPlayer, saveNotifTimer, errSound,
