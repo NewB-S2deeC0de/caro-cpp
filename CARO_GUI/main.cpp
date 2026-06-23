@@ -24,7 +24,7 @@ static void SaveHintState(int slotId, const int hintLeft[2])
     if (slotId < 1 || slotId > 5) return;
 
     std::ofstream file(HintStatePath_Main(slotId), std::ios::out | std::ios::binary);
-    if (!file.is_open()) return;
+    if (!file.is_open()) return; 
 
     const char magic[8] = { 'H','I','N','T','S','A','V','\0' };
     int version = 1;
